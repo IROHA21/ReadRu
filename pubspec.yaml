@@ -38,9 +38,9 @@ dependencies:
   syncfusion_flutter_pdf: ^33.2.13
   epubx: 4.0.0
   dart_mobi: ^1.0.0
-  fb2_parse: ^1.0.1
   get_it: ^9.2.1
   flutter_bloc: ^9.1.1
+  kindle_unpack: ^0.1.1
 
 
 

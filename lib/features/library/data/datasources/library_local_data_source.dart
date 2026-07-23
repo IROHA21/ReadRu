@@ -3,6 +3,11 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'dart:io';
+import 'package:epubx/epubx.dart';
+import 'dart:convert';
+import 'package:xml/xml.dart';
+import 'package:kindle_unpack/kindle_unpack.dart';
+import 'package:read_ru/features/library/data/utils/html_to_plain_text.dart';
 
 class LibraryLocalDataSource {
 
@@ -15,7 +20,7 @@ class LibraryLocalDataSource {
     return result.files.single;
   }
 
-
+  //pdf
   Future<String> extractPdfText(String filePath) async
   {
     final bytes = File(filePath).readAsBytesSync(); // opens the file as bites and reads raw conetent
@@ -29,4 +34,46 @@ class LibraryLocalDataSource {
 
   }
 
+  // txt
+  Future<String> extractTxtText(String filePath) async {
+    return File(filePath).readAsStringSync();
+  }
+
+  //epub
+  Future<String> extractEpubText(String filePath) async{
+    final bytes = File(filePath).readAsBytesSync();
+    final book = await EpubReader.readBook(bytes);
+
+    final buffer = StringBuffer();
+    for (final chapter in book.Chapters ?? []) {
+      buffer.writeln(chapter.HtmlContent ?? '');
+    }
+
+    return htmlToPlainText(buffer.toString());
+  }
+
+  //mobi
+  Future<String> extractMobiText(String filePath) async {
+    final bytes = File(filePath).readAsBytesSync();
+    final book = KindleBook.fromBytes(bytes);
+    final buffer = StringBuffer();
+    for (final part in book.parts) {
+      buffer.writeln(utf8.decode(part.bytes, allowMalformed: true));
+    }
+
+    return htmlToPlainText(buffer.toString());
+  }
+
+  //fb2
+  Future<String> extractFb2Text(String filePath) async {
+    final content = await File(filePath).readAsString();
+    final document = XmlDocument.parse(content);
+
+    final buffer = StringBuffer();
+    for (final body in document.findAllElements('body')) {
+      buffer.writeln(body.innerText);
+    }
+
+    return buffer.toString().trim();
+  }
 }

@@ -41,7 +41,14 @@ class LibraryRepositoryImpl implements LibraryRepository {
     switch (document.format) {
       case DocumentFormat.pdf:
         return dataSource.extractPdfText(document.filepath);
-      default: throw UnimplementedError('${document.format} not supported yet');
+      case DocumentFormat.txt:
+        return dataSource.extractTxtText(document.filepath);
+      case DocumentFormat.epub:
+        return dataSource.extractEpubText(document.filepath);
+      case DocumentFormat.mobi:
+        return dataSource.extractMobiText(document.filepath);
+      case DocumentFormat.fb2:
+        return dataSource.extractFb2Text(document.filepath);
     }
 
 
