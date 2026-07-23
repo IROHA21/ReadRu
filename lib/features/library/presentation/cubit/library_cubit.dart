@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'library_state.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 
@@ -27,12 +28,19 @@ class LibraryCubit extends Cubit<LibraryState>{
     } catch (e) {
       emit(LibraryError(e.toString()));
     }
+  }
 
 
 
-
-
-
+  Future<void> loadDocument(Document document) async {
+    emit(LibraryLoading());
+    try {
+      final text = await
+      repository.extractText(document);
+      emit(LibraryLoaded(text));
+    } catch (e) {
+      emit(LibraryError(e.toString()));
+    }
   }
 
 

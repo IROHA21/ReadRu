@@ -1,4 +1,5 @@
 
+import 'package:read_ru/features/library/data/datasources/library_storage_data_source.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 import 'package:read_ru/features/library/data/datasources/library_local_data_source.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
@@ -10,7 +11,9 @@ class LibraryRepositoryImpl implements LibraryRepository {
 //   LibraryLocalDataSource();
 //   }  this is welding it , but we want to be able to replace it for unit tests
   final LibraryLocalDataSource dataSource;
-  LibraryRepositoryImpl(this.dataSource);
+  final LibraryStorageDataSource storageDataSource;
+
+  LibraryRepositoryImpl(this.dataSource, this.storageDataSource);
 
   @override
   Future<Document?> pickDocument() async {
@@ -29,7 +32,27 @@ class LibraryRepositoryImpl implements LibraryRepository {
       'txt' => DocumentFormat.txt,
       _ => throw Exception('unsupported file format')
     };
-    return Document(id: file.path! , title: file.name, filepath: file.path!, format: format);
+
+    final title = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+
+    final library = await storageDataSource.getSavedDocuments();
+
+    final alreadyExists = library.any((doc) =>
+    doc.title == title);
+
+    if (alreadyExists) {
+      throw Exception('Already added');
+    }
+
+    final document = Document(id: file.path!, title: title, filepath: file.path!, format: format, progress: 0);
+    // return Document(id: file.path! , title: file.name, filepath: file.path!, format: format, progress: 0);
+
+
+    library.add(document);
+
+    await storageDataSource.saveDocuments(library);
+
+    return document;
 
   }
 
@@ -53,5 +76,20 @@ class LibraryRepositoryImpl implements LibraryRepository {
 
 
   }
+
+  @override
+  Future<List<Document>> getLibrary() {
+    return storageDataSource.getSavedDocuments();
+  }
+
+  @override
+  Future<void> deleteDocument(Document document) async {
+    final library = await storageDataSource.getSavedDocuments();
+    library.removeWhere((doc) => doc.id == document.id);
+    await storageDataSource.saveDocuments(library);
+  }
+
+
+
 
 }

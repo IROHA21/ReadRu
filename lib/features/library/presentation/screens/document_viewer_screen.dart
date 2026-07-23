@@ -1,24 +1,33 @@
-
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/di/injection_container.dart';
+import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_cubit.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_state.dart';
-import 'package:flutter/material.dart';
 
-class LibraryScreen extends StatelessWidget {
-  const LibraryScreen({super.key});
+class DocumentViewerScreen extends StatelessWidget {
+  final Document document;
+
+  const DocumentViewerScreen({super.key, required this.document});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => getIt<LibraryCubit>(),
-        child: Builder(
-          builder: (context) => Scaffold(
+      create: (_) => getIt<LibraryCubit>()..loadDocument(document),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 0,
+          title: Text(document.title),
+        ),
         body: SafeArea(
           child: BlocBuilder<LibraryCubit, LibraryState>(
             builder: (context, state) {
               return switch (state) {
-                LibraryInitial() => const Center(child: Text('No document loaded')),
+                LibraryInitial() => const SizedBox(),
                 LibraryLoading() => const Center(child: CircularProgressIndicator()),
                 LibraryLoaded() => Padding(
                     padding: const EdgeInsets.all(16),
@@ -29,12 +38,7 @@ class LibraryScreen extends StatelessWidget {
             },
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => context.read<LibraryCubit>().pickAndLoadDocument(),
-          child: const Icon(Icons.add),
-        ),
       ),
-        ),
     );
   }
 }
