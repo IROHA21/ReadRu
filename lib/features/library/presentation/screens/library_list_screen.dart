@@ -60,12 +60,18 @@ class _LibraryListView extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: BlocBuilder<LibraryListCubit, LibraryListState>(
+              child: BlocConsumer<LibraryListCubit, LibraryListState>(
+                listener: (context, state) {
+                  if (state is LibraryListError) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.message)),
+                    );
+                  }
+                },
                 builder: (context, state) {
                   return switch (state) {
-                    LibraryListInitial() || LibraryListLoading() =>
+                    LibraryListInitial() || LibraryListLoading() || LibraryListError() =>
                       const Center(child: CircularProgressIndicator()),
-                    LibraryListError() => Center(child: Text(state.message)),
                     LibraryListLoaded() => _LibraryListContent(documents: state.documents),
                   };
                 },

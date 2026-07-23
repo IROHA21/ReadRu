@@ -24,16 +24,24 @@ class DocumentViewerScreen extends StatelessWidget {
           title: Text(document.title),
         ),
         body: SafeArea(
-          child: BlocBuilder<LibraryCubit, LibraryState>(
+          child: BlocConsumer<LibraryCubit, LibraryState>(
+
+            listener: (context, state) {
+              if (state is LibraryError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(state.message)),
+                );
+              }
+            },
             builder: (context, state) {
               return switch (state) {
-                LibraryInitial() => const SizedBox(),
+                LibraryInitial() || LibraryError() => const SizedBox(),
                 LibraryLoading() => const Center(child: CircularProgressIndicator()),
                 LibraryLoaded() => Padding(
                     padding: const EdgeInsets.all(16),
                     child: SingleChildScrollView(child: Text(state.text)),
                   ),
-                LibraryError() => Center(child: Text(state.message)),
+
               };
             },
           ),

@@ -15,6 +15,7 @@ class LibraryListCubit extends Cubit<LibraryListState> {
       emit(LibraryListLoaded(documents));
     } catch (e) {
       emit(LibraryListError(e.toString()));
+      emit(LibraryListLoaded([]));
     }
   }
 
@@ -28,6 +29,8 @@ class LibraryListCubit extends Cubit<LibraryListState> {
       await loadLibrary();
     } catch (e) {
       emit(LibraryListError(e.toString()));
+      await loadLibrary();
+
     }
   }
 
@@ -38,6 +41,7 @@ class LibraryListCubit extends Cubit<LibraryListState> {
       await loadLibrary();
     } catch (e) {
       emit(LibraryListError(e.toString()));
+      await loadLibrary();
     }
   }
 }

@@ -27,6 +27,7 @@ class LibraryCubit extends Cubit<LibraryState>{
       emit(LibraryLoaded(text));
     } catch (e) {
       emit(LibraryError(e.toString()));
+      emit(LibraryInitial());
     }
   }
 
@@ -40,10 +41,9 @@ class LibraryCubit extends Cubit<LibraryState>{
       emit(LibraryLoaded(text));
     } catch (e) {
       emit(LibraryError(e.toString()));
+      emit(LibraryInitial());
     }
   }
 
 
 }
-
-
