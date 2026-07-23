@@ -5,7 +5,10 @@ import 'package:read_ru/features/library/domain/entities/document.dart';
 
 class LibraryRepositoryImpl implements LibraryRepository {
 
-
+// class LibraryRepositoryImpl implements LibraryRepository {
+//     final LibraryLocalDataSource dataSource =
+//   LibraryLocalDataSource();
+//   }  this is welding it , but we want to be able to replace it for unit tests
   final LibraryLocalDataSource dataSource;
   LibraryRepositoryImpl(this.dataSource);
 

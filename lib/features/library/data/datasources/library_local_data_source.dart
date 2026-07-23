@@ -7,7 +7,7 @@ import 'dart:io';
 class LibraryLocalDataSource {
 
   Future<PlatformFile?> pickFile() async {
-    final result = await FilePicker.pickFiles();
+    final result = await FilePicker.platform.pickFiles();
 
     if (result == null) {
       return null;

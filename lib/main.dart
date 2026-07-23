@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-
+import 'package:read_ru/core/di/injection_container.dart';
+import 'package:read_ru/features/library/presentation/screens/library_screen.dart';
 void main() {
+  setupLocator();
   runApp(const MyApp());
 }
 
@@ -13,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'read_ru',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
       home: const Scaffold(
-        body: Center(child: Text('read_ru')),
+        body: const LibraryScreen()
       ),
     );
   }
