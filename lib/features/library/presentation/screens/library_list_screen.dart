@@ -143,10 +143,12 @@ class _DocumentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        Navigator.of(context).push(
+      onTap: () async {
+        final cubit = context.read<LibraryListCubit>();
+        await Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => DocumentViewerScreen(document: document)),
         );
+        cubit.loadLibrary();
       },
       child: Container(
         padding: const EdgeInsets.all(16),

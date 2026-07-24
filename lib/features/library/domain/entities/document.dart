@@ -9,12 +9,17 @@ class Document{
   final DocumentFormat format;
   final double progress;
 
+  final int lastWordIndex;
+  final List<int> tappedWordIndices;
+
   Document({
     required this.id,
     required this.title,
     required this.filepath,
     required this.format,
-    required this.progress
+    required this.progress,
+    this.lastWordIndex = 0,
+    this.tappedWordIndices = const[],
   });
    // Document to json
   Map<String, dynamic> toJson() {
@@ -24,6 +29,9 @@ class Document{
       'filepath': filepath,
       'format': format.name,
       'progress': progress,
+
+      'lastWordIndex': lastWordIndex,
+      'tappedWordIndices': tappedWordIndices,
     };
   }
   // json to Document
@@ -36,6 +44,9 @@ class Document{
       DocumentFormat.values.byName(json['format'] as
       String),
       progress: json['progress'] as double,
+
+      lastWordIndex: json['lastWordIndex'] as int,
+      tappedWordIndices:( json['tappedWordIndices'] as List<dynamic>).cast<int>(),
     );
   }
 

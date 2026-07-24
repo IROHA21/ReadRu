@@ -15,4 +15,8 @@ abstract class LibraryRepository {
 
     // delete one document
     Future<void> deleteDocument(Document document);
+
+    // save progress
+    Future<void> updateReadingProgress(Document document);
+
 }

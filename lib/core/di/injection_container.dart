@@ -6,7 +6,6 @@ import 'package:read_ru/features/library/data/repositories/library_repository_im
 import 'package:read_ru/features/library/presentation/cubit/library_cubit.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_cubit.dart';
 
-
 final getIt = GetIt.instance;
 
 void setupLocator() {
@@ -24,5 +23,4 @@ void setupLocator() {
 
 
   getIt.registerFactory<LibraryListCubit>(() => LibraryListCubit(getIt<LibraryRepository>()));
-
 }

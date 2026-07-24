@@ -90,6 +90,20 @@ class LibraryRepositoryImpl implements LibraryRepository {
   }
 
 
+  @override
+  Future<void> updateReadingProgress(Document document) async{
+    final library = await storageDataSource.getSavedDocuments();
+    final index = library.indexWhere((doc) => doc.id == document.id);
+
+    if (index == -1) return;
+
+    library[index] = document;
+    await storageDataSource.saveDocuments(library);
+
+  }
+
+
+
 
 
 }
