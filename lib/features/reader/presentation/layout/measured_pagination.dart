@@ -1,4 +1,5 @@
 import 'package:flutter/painting.dart';
+import 'package:read_ru/features/reader/domain/split_into_words.dart';
 
 /// Text metrics pinned explicitly so the measurer and _WordWidget render with
 /// identical styles. Without this, Text widgets inherit the Material theme's
@@ -92,6 +93,22 @@ List<List<String>> paginateMeasured({
   var usedHeight = rowHeight;
 
   for (final word in words) {
+    if (word == paragraphBreak) {
+      // Forces the next word onto a new row, same page-break logic as an
+      // ordinary wrap - just triggered explicitly instead of by width.
+      final heightWithNewRow = usedHeight + runSpacing + rowHeight;
+      if (heightWithNewRow <= containerHeight) {
+        usedHeight = heightWithNewRow;
+      } else {
+        pages.add(page);
+        page = <String>[];
+        usedHeight = rowHeight;
+      }
+      lineX = 0;
+      page.add(word);
+      continue;
+    }
+
     final width = measurer.wordWidth(word);
 
     final neededX = lineX == 0 ? width : lineX + wordSpacing + width;

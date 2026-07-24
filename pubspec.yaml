@@ -42,6 +42,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   kindle_unpack: ^0.1.1
   shared_preferences: ^2.5.5
+  http: ^1.6.0
 
 
 

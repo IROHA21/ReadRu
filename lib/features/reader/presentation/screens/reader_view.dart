@@ -1,9 +1,51 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:read_ru/core/config/app_colors.dart';
+import 'package:read_ru/core/config/secrets.dart';
+import 'package:read_ru/features/reader/domain/split_into_words.dart';
 import 'package:read_ru/features/reader/presentation/cubit/reader_cubit.dart';
 import 'package:read_ru/features/reader/presentation/cubit/reader_state.dart';
 import 'package:read_ru/features/reader/presentation/layout/measured_pagination.dart';
+
+// DIRTY TEST CODE - no repository, no error UI beyond a fallback string.
+// Delete this whole block once Phase 3 builds the real TranslationRepository.
+// Real key/folder live in secrets.dart (gitignored) - see secrets.example.dart.
+final Map<String, String> _translationCache = {};
+
+// Strips leading/trailing punctuation - \p{L}/\p{N} match any letter/number
+// in any script (Cyrillic included), so this doesn't assume Latin text.
+String _stripPunctuation(String word) {
+  return word.replaceAll(RegExp(r'^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$', unicode: true), '');
+}
+
+Future<String> _translateWord(String word) async {
+  if (_translationCache.containsKey(word)) {
+    return _translationCache[word]!;
+  }
+  try {
+    final response = await http.post(
+      Uri.parse('https://translate.api.cloud.yandex.net/translate/v2/translate'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Api-Key $yandexTranslateApiKey',
+      },
+      body: jsonEncode({
+        'folderId': yandexTranslateFolderId,
+        'texts': [word],
+        'sourceLanguageCode': 'ru',
+        'targetLanguageCode': 'en',
+      }),
+    );
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    final translated = (decoded['translations'] as List).first['text'] as String;
+    _translationCache[word] = translated;
+    return translated;
+  } catch (e) {
+    return '(failed)';
+  }
+}
 
 class ReaderView extends StatelessWidget {
   final String text;
@@ -180,18 +222,21 @@ class _ReaderPage extends StatelessWidget {
       runSpacing: readerRunSpacing,
       children: [
         for (var i = 0; i < currentWords.length; i++)
-          _WordWidget(
-            word: currentWords[i],
-            isTapped: state.tappedWordIndices.contains(startIndex + i),
-            onTap: () => context.read<ReaderCubit>().toggleWord(startIndex + i),
-            fontSize: state.fontSize,
-          ),
+          if (currentWords[i] == paragraphBreak)
+            const SizedBox(width: double.infinity, height: 0)
+          else
+            _WordWidget(
+              word: currentWords[i],
+              isTapped: state.tappedWordIndices.contains(startIndex + i),
+              onTap: () => context.read<ReaderCubit>().toggleWord(startIndex + i),
+              fontSize: state.fontSize,
+            ),
       ],
     );
   }
 }
 
-class _WordWidget extends StatelessWidget {
+class _WordWidget extends StatefulWidget {
   final String word;
   final bool isTapped;
   final VoidCallback onTap;
@@ -205,31 +250,71 @@ class _WordWidget extends StatelessWidget {
   });
 
   @override
+  State<_WordWidget> createState() => _WordWidgetState();
+}
+
+class _WordWidgetState extends State<_WordWidget> {
+  String? _translation;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isTapped) _fetchTranslation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _WordWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isTapped && _translation == null && !_loading) {
+      _fetchTranslation();
+    }
+  }
+
+  Future<void> _fetchTranslation() async {
+    final cleaned = _stripPunctuation(widget.word);
+    if (cleaned.isEmpty) {
+      setState(() {
+        _translation = '';
+        _loading = false;
+      });
+      return;
+    }
+
+    setState(() => _loading = true);
+    final result = await _translateWord(cleaned);
+    if (mounted) {
+      setState(() {
+        _translation = result;
+        _loading = false;
+      });
+    }
+  }
+
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            word,
-            style: readerTextStyle(fontSize, color: AppColors.textPrimary),
+            widget.word,
+            style: readerTextStyle(widget.fontSize, color: AppColors.textPrimary),
           ),
           Visibility(
-            visible: isTapped,
+            visible: widget.isTapped,
             maintainSize: true,
             maintainAnimation: true,
             maintainState: true,
             child: Text(
-              _hardcodedTranslation(word),
-              style: readerTextStyle(fontSize * 0.7, color: AppColors.accent),
+              _loading ? '...' : (_translation ?? ''),
+              style: readerTextStyle(widget.fontSize * 0.7, color: AppColors.accent),
             ),
           ),
         ],
       ),
     );
   }
-
-  // Placeholder only - real translation arrives in Phase 3.
-  String _hardcodedTranslation(String word) => word.split('').reversed.join();
 }
