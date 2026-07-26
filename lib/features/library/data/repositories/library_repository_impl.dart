@@ -1,8 +1,10 @@
 
+import 'package:flutter/foundation.dart';
 import 'package:read_ru/features/library/data/datasources/library_storage_data_source.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 import 'package:read_ru/features/library/data/datasources/library_local_data_source.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
+import 'package:read_ru/features/library/domain/normalize_extracted_text.dart';
 
 class LibraryRepositoryImpl implements LibraryRepository {
 
@@ -60,21 +62,13 @@ class LibraryRepositoryImpl implements LibraryRepository {
   @override
   Future<String> extractText(Document document) async
   {
-
-    switch (document.format) {
-      case DocumentFormat.pdf:
-        return dataSource.extractPdfText(document.filepath);
-      case DocumentFormat.txt:
-        return dataSource.extractTxtText(document.filepath);
-      case DocumentFormat.epub:
-        return dataSource.extractEpubText(document.filepath);
-      case DocumentFormat.mobi:
-        return dataSource.extractMobiText(document.filepath);
-      case DocumentFormat.fb2:
-        return dataSource.extractFb2Text(document.filepath);
-    }
-
-
+    // Parsing + normalizing is heavy synchronous CPU work - run it in a
+    // separate isolate via compute() so the UI thread keeps painting (the
+    // loading spinner actually spins instead of freezing).
+    return compute(
+      _extractAndNormalize,
+      (document.filepath, document.format),
+    );
   }
 
   @override
@@ -106,4 +100,22 @@ class LibraryRepositoryImpl implements LibraryRepository {
 
 
 
+}
+
+/// Runs inside the isolate - compute() requires a top-level function, and
+/// isolates share no memory with the main one, so this builds its own
+/// data source (it's stateless, so nothing is lost).
+Future<String> _extractAndNormalize((String, DocumentFormat) args) async {
+  final (filepath, format) = args;
+  final dataSource = LibraryLocalDataSource();
+
+  final raw = switch (format) {
+    DocumentFormat.pdf => await dataSource.extractPdfText(filepath),
+    DocumentFormat.txt => await dataSource.extractTxtText(filepath),
+    DocumentFormat.epub => await dataSource.extractEpubText(filepath),
+    DocumentFormat.mobi => await dataSource.extractMobiText(filepath),
+    DocumentFormat.fb2 => await dataSource.extractFb2Text(filepath),
+  };
+
+  return normalizeExtractedText(raw, format);
 }

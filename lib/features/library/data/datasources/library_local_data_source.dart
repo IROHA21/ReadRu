@@ -23,7 +23,7 @@ class LibraryLocalDataSource {
   //pdf
   Future<String> extractPdfText(String filePath) async
   {
-    final bytes = File(filePath).readAsBytesSync(); // opens the file as bites and reads raw conetent
+    final bytes = await File(filePath).readAsBytes(); // opens the file as bites and reads raw conetent
 
     final document = PdfDocument(inputBytes: bytes); //hand those bytes to Syncfusion so it can open the PDF
 
@@ -36,12 +36,12 @@ class LibraryLocalDataSource {
 
   // txt
   Future<String> extractTxtText(String filePath) async {
-    return File(filePath).readAsStringSync();
+    return File(filePath).readAsString();
   }
 
   //epub
   Future<String> extractEpubText(String filePath) async{
-    final bytes = File(filePath).readAsBytesSync();
+    final bytes = await File(filePath).readAsBytes();
     final book = await EpubReader.readBook(bytes);
 
     final buffer = StringBuffer();
@@ -54,7 +54,7 @@ class LibraryLocalDataSource {
 
   //mobi
   Future<String> extractMobiText(String filePath) async {
-    final bytes = File(filePath).readAsBytesSync();
+    final bytes = await File(filePath).readAsBytes();
     final book = KindleBook.fromBytes(bytes);
     final buffer = StringBuffer();
     for (final part in book.parts) {
@@ -69,11 +69,14 @@ class LibraryLocalDataSource {
     final content = await File(filePath).readAsString();
     final document = XmlDocument.parse(content);
 
-    final buffer = StringBuffer();
-    for (final body in document.findAllElements('body')) {
-      buffer.writeln(body.innerText);
-    }
+    // FB2 marks each paragraph with its own <p>, but innerText on <body>
+    // alone concatenates them with no separator - join per-<p> instead so
+    // paragraph breaks (blank line, same contract as htmlToPlainText) survive.
+    final paragraphs = document
+        .findAllElements('p')
+        .map((p) => p.innerText.trim())
+        .where((p) => p.isNotEmpty);
 
-    return buffer.toString().trim();
+    return paragraphs.join('\n\n');
   }
 }

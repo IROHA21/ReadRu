@@ -45,8 +45,8 @@ class Document{
       String),
       progress: json['progress'] as double,
 
-      lastWordIndex: json['lastWordIndex'] as int,
-      tappedWordIndices:( json['tappedWordIndices'] as List<dynamic>).cast<int>(),
+      lastWordIndex: json['lastWordIndex'] as int? ?? 0,
+      tappedWordIndices: (json['tappedWordIndices'] as List<dynamic>?)?.cast<int>() ?? const [],
     );
   }
 
