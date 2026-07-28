@@ -7,7 +7,49 @@ import 'package:epubx/epubx.dart';
 import 'dart:convert';
 import 'package:xml/xml.dart';
 import 'package:kindle_unpack/kindle_unpack.dart';
+import 'package:image/image.dart' as img;
 import 'package:read_ru/features/library/data/utils/html_to_plain_text.dart';
+import 'package:read_ru/features/library/domain/entities/chapter.dart';
+
+typedef BookMetadata = ({
+  String? title,
+  String? author,
+  String? description,
+  String? language,
+  String? coverImageBase64,
+  List<Chapter> chapters,
+});
+
+int _countWords(String text) => text.trim().isEmpty
+    ? 0
+    : text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+
+// splitIntoWords inserts one paragraphBreak "word" between every pair of
+// consecutive paragraphs (split on blank lines) - so to land a chapter's
+// wordIndex on the right spot in that final word list, we need to count
+// not just real words but these break tokens too, or the estimate drifts
+// further off the deeper into the book a chapter is (dialogue-heavy text
+// splits into many short paragraphs, so this isn't a rare edge case here).
+int _countParagraphs(String text) =>
+    text.split(RegExp(r'\n\s*\n')).where((p) => p.trim().isNotEmpty).length;
+
+T? _firstOrNull<T>(Iterable<T> iterable) => iterable.isEmpty ? null : iterable.first;
+
+// Treats a blank/whitespace-only string the same as absent - metadata
+// fields are often present in the file but empty.
+String? _orNull(String? value) {
+  final trimmed = value?.trim();
+  return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+}
+
+const _emptyMetadata = (
+  title: null,
+  author: null,
+  description: null,
+  language: null,
+  coverImageBase64: null,
+  chapters: <Chapter>[],
+);
 
 class LibraryLocalDataSource {
 
@@ -52,6 +94,56 @@ class LibraryLocalDataSource {
     return htmlToPlainText(buffer.toString());
   }
 
+  // epub metadata: title/author/description/language (Dublin Core), cover
+  // (epubx decodes it to raw pixels - no way to get the original file
+  // bytes back, so it's re-encoded to JPEG), and chapter headings with an
+  // approximate word index each. Reuses the one parsed EpubBook for all of
+  // it instead of parsing the file separately per field.
+  Future<BookMetadata> extractEpubMetadata(String filePath) async {
+    try {
+      final bytes = await File(filePath).readAsBytes();
+      final book = await EpubReader.readBook(bytes);
+      final metadata = book.Schema?.Package?.Metadata;
+
+      final cover = book.CoverImage;
+      final coverImageBase64 = cover == null ? null : base64Encode(img.encodeJpg(cover, quality: 85));
+
+      // Word index is counted from each chapter's own plain text in the
+      // same document order splitIntoWords will eventually see them in -
+      // not exact once normalizeExtractedText reflows things, but close
+      // enough to force a page break at.
+      final chapters = <Chapter>[];
+      var wordCount = 0;
+      var paragraphCount = 0;
+      void visit(EpubChapter chapter) {
+        final chapterTitle = _orNull(chapter.Title);
+        if (chapterTitle != null) {
+          chapters.add(Chapter(title: chapterTitle, wordIndex: wordCount + paragraphCount));
+        }
+        final plainText = htmlToPlainText(chapter.HtmlContent ?? '');
+        wordCount += _countWords(plainText);
+        paragraphCount += _countParagraphs(plainText);
+        for (final sub in chapter.SubChapters ?? const <EpubChapter>[]) {
+          visit(sub);
+        }
+      }
+      for (final chapter in book.Chapters ?? const <EpubChapter>[]) {
+        visit(chapter);
+      }
+
+      return (
+        title: _orNull(book.Title),
+        author: _orNull(book.Author),
+        description: _orNull(metadata?.Description),
+        language: _orNull(_firstOrNull(metadata?.Languages ?? const <String>[])),
+        coverImageBase64: coverImageBase64,
+        chapters: chapters,
+      );
+    } catch (_) {
+      return _emptyMetadata;
+    }
+  }
+
   //mobi
   Future<String> extractMobiText(String filePath) async {
     final bytes = await File(filePath).readAsBytes();
@@ -62,6 +154,37 @@ class LibraryLocalDataSource {
     }
 
     return htmlToPlainText(buffer.toString());
+  }
+
+  // mobi metadata: title (EXTH 503, falling back to the MOBI header's
+  // fullName - see KindleBook.title), author/description/language (EXTH),
+  // and cover - kindle_unpack already hands back the original image bytes
+  // (whatever format the file used), so no re-encoding needed. SVG covers
+  // aren't renderable by Image.memory, so those are treated as no cover.
+  // kindle_unpack doesn't expose a clean chapter/TOC structure (its
+  // parts/flows are raw content segments, not headings), so chapters is
+  // always empty here.
+  Future<BookMetadata> extractMobiMetadata(String filePath) async {
+    try {
+      final bytes = await File(filePath).readAsBytes();
+      final book = KindleBook.fromBytes(bytes);
+      final exth = book.exth;
+
+      final cover = book.images.cover;
+      final coverImageBase64 =
+          (cover == null || cover.format == ImageFormat.svg) ? null : base64Encode(cover.data);
+
+      return (
+        title: _orNull(book.title),
+        author: _orNull(_firstOrNull(exth?.authors ?? const <String>[])),
+        description: _orNull(exth?.description),
+        language: _orNull(exth?.language),
+        coverImageBase64: coverImageBase64,
+        chapters: const <Chapter>[],
+      );
+    } catch (_) {
+      return _emptyMetadata;
+    }
   }
 
   //fb2
@@ -78,5 +201,117 @@ class LibraryLocalDataSource {
         .where((p) => p.isNotEmpty);
 
     return paragraphs.join('\n\n');
+  }
+
+  // fb2 metadata: everything lives in <description><title-info> as plain
+  // structured XML - book-title, author name, lang, and an annotation
+  // (description) made of its own <p>s. Cover is <coverpage><image
+  // href="#id"/> pointing at a <binary id="id"> that already holds the
+  // image base64-encoded right in the XML, so it's just copied through.
+  // Chapters walk <section><title> under every non-notes <body>, counting
+  // words the same way extractFb2Text's flat <p> search does so the
+  // indices land in roughly the same place.
+  Future<BookMetadata> extractFb2Metadata(String filePath) async {
+    try {
+      final content = await File(filePath).readAsString();
+      final document = XmlDocument.parse(content);
+
+      final titleInfo = _firstOrNull(document.findAllElements('title-info'));
+
+      final title =
+          _orNull(_firstOrNull(titleInfo?.findElements('book-title') ?? const <XmlElement>[])?.innerText);
+
+      final language =
+          _orNull(_firstOrNull(titleInfo?.findElements('lang') ?? const <XmlElement>[])?.innerText);
+
+      final authorEl = _firstOrNull(titleInfo?.findElements('author') ?? const <XmlElement>[]);
+      final authorName = authorEl == null
+          ? null
+          : [
+              _orNull(_firstOrNull(authorEl.findElements('first-name'))?.innerText),
+              _orNull(_firstOrNull(authorEl.findElements('last-name'))?.innerText),
+            ].whereType<String>().join(' ');
+
+      final annotationParagraphs =
+          _firstOrNull(titleInfo?.findElements('annotation') ?? const <XmlElement>[])
+              ?.findElements('p')
+              .map((p) => p.innerText.trim())
+              .where((p) => p.isNotEmpty)
+              .join(' ') ??
+          '';
+
+      String? coverImageBase64;
+      final coverImages =
+          document.findAllElements('coverpage').expand((coverpage) => coverpage.findElements('image'));
+      if (coverImages.isNotEmpty) {
+        final hrefAttrs = coverImages.first.attributes.where((a) => a.name.local == 'href');
+        if (hrefAttrs.isNotEmpty) {
+          final href = hrefAttrs.first.value;
+          final id = href.startsWith('#') ? href.substring(1) : href;
+          final binaries = document.findAllElements('binary').where((b) => b.getAttribute('id') == id);
+          coverImageBase64 = _orNull(_firstOrNull(binaries)?.innerText);
+        }
+      }
+
+      final chapters = <Chapter>[];
+      var wordCount = 0;
+      var paragraphCount = 0;
+
+      // Every <p> here (whatever it's nested under - title, epigraph,
+      // subtitle, or a section's own body text) becomes its own paragraph
+      // in extractFb2Text's flat join, each preceded by one paragraphBreak
+      // token once split into words - so word/paragraph counts have to
+      // treat them all uniformly to land on the right index.
+      void countParagraphsIn(XmlElement element) {
+        final paragraphs = [
+          if (element.name.local == 'p') element,
+          ...element.findAllElements('p'),
+        ];
+        for (final p in paragraphs) {
+          wordCount += _countWords(p.innerText);
+          paragraphCount += 1;
+        }
+      }
+
+      void visitSection(XmlElement section) {
+        final titleEl = _firstOrNull(section.findElements('title'));
+        if (titleEl != null) {
+          final sectionTitle = titleEl
+              .findElements('p')
+              .map((p) => p.innerText.trim())
+              .where((t) => t.isNotEmpty)
+              .join(' ');
+          if (sectionTitle.isNotEmpty) {
+            chapters.add(Chapter(title: sectionTitle, wordIndex: wordCount + paragraphCount));
+          }
+        }
+
+        for (final child in section.childElements) {
+          if (child.name.local == 'section') {
+            visitSection(child);
+          } else {
+            countParagraphsIn(child);
+          }
+        }
+      }
+
+      final bodies = document.findAllElements('body').where((b) => b.getAttribute('name') != 'notes');
+      for (final body in bodies) {
+        for (final section in body.findElements('section')) {
+          visitSection(section);
+        }
+      }
+
+      return (
+        title: title,
+        author: _orNull(authorName),
+        description: _orNull(annotationParagraphs),
+        language: language,
+        coverImageBase64: coverImageBase64,
+        chapters: chapters,
+      );
+    } catch (_) {
+      return _emptyMetadata;
+    }
   }
 }

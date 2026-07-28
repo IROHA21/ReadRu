@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:read_ru/features/library/data/datasources/library_storage_data_source.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 import 'package:read_ru/features/library/data/datasources/library_local_data_source.dart';
+import 'package:read_ru/features/library/domain/entities/chapter.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'package:read_ru/features/library/domain/normalize_extracted_text.dart';
 
@@ -35,7 +36,15 @@ class LibraryRepositoryImpl implements LibraryRepository {
       _ => throw Exception('unsupported file format')
     };
 
-    final title = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+    final filenameTitle = file.name.replaceFirst(RegExp(r'\.[^.]+$'), '');
+
+    // Only epub/mobi/fb2 carry metadata worth extracting - pdf/txt skip
+    // straight to the filename title with no isolate spawned.
+    final metadata = format == DocumentFormat.pdf || format == DocumentFormat.txt
+        ? null
+        : await compute(_extractMetadata, (file.path!, format));
+
+    final title = metadata?.title ?? filenameTitle;
 
     final library = await storageDataSource.getSavedDocuments();
 
@@ -46,8 +55,18 @@ class LibraryRepositoryImpl implements LibraryRepository {
       throw Exception('Already added');
     }
 
-    final document = Document(id: file.path!, title: title, filepath: file.path!, format: format, progress: 0);
-    // return Document(id: file.path! , title: file.name, filepath: file.path!, format: format, progress: 0);
+    final document = Document(
+      id: file.path!,
+      title: title,
+      filepath: file.path!,
+      format: format,
+      progress: 0,
+      coverImageBase64: metadata?.coverImageBase64,
+      chapters: metadata?.chapters ?? const [],
+      author: metadata?.author,
+      description: metadata?.description,
+      language: metadata?.language,
+    );
 
 
     library.add(document);
@@ -80,6 +99,15 @@ class LibraryRepositoryImpl implements LibraryRepository {
   Future<void> deleteDocument(Document document) async {
     final library = await storageDataSource.getSavedDocuments();
     library.removeWhere((doc) => doc.id == document.id);
+    await storageDataSource.saveDocuments(library);
+  }
+
+  @override
+  Future<void> renameDocument(Document document, String newTitle) async {
+    final library = await storageDataSource.getSavedDocuments();
+    final index = library.indexWhere((doc) => doc.id == document.id);
+    if (index == -1) return;
+    library[index] = document.copyWith(title: newTitle);
     await storageDataSource.saveDocuments(library);
   }
 
@@ -118,4 +146,33 @@ Future<String> _extractAndNormalize((String, DocumentFormat) args) async {
   };
 
   return normalizeExtractedText(raw, format);
+}
+
+/// Runs inside the isolate, same reasoning as [_extractAndNormalize] -
+/// parsing an epub/mobi/fb2 file just to pull its metadata out is still
+/// real CPU work and shouldn't block the Library screen while adding a book.
+Future<BookMetadata> _extractMetadata((String, DocumentFormat) args) async {
+  final (filepath, format) = args;
+  final dataSource = LibraryLocalDataSource();
+
+  switch (format) {
+    case DocumentFormat.epub:
+      return dataSource.extractEpubMetadata(filepath);
+    case DocumentFormat.mobi:
+      return dataSource.extractMobiMetadata(filepath);
+    case DocumentFormat.fb2:
+      return dataSource.extractFb2Metadata(filepath);
+    case DocumentFormat.pdf:
+    case DocumentFormat.txt:
+      // Never actually called for these (see the caller's guard) - kept
+      // only so the switch stays exhaustive.
+      return (
+        title: null,
+        author: null,
+        description: null,
+        language: null,
+        coverImageBase64: null,
+        chapters: const <Chapter>[],
+      );
+  }
 }

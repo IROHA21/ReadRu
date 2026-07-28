@@ -16,6 +16,9 @@ abstract class LibraryRepository {
     // delete one document
     Future<void> deleteDocument(Document document);
 
+    // rename one document
+    Future<void> renameDocument(Document document, String newTitle);
+
     // save progress
     Future<void> updateReadingProgress(Document document);
 
