@@ -1,5 +1,6 @@
 import 'package:flutter/painting.dart';
 import 'package:read_ru/features/reader/domain/split_into_words.dart';
+import 'package:read_ru/features/settings/domain/reader_font.dart';
 
 /// Text metrics pinned explicitly so the measurer and _WordWidget render with
 /// identical styles. Without this, Text widgets inherit the Material theme's
@@ -12,12 +13,13 @@ const double readerLetterSpacing = 0;
 const double readerWordSpacing = 8;
 const double readerRunSpacing = 4;
 
-TextStyle readerTextStyle(double fontSize, {Color? color}) => TextStyle(
+TextStyle readerTextStyle(double fontSize, {required ReaderFont font, Color? color}) =>
+    font.apply(TextStyle(
       fontSize: fontSize,
       height: readerLineHeight,
       letterSpacing: readerLetterSpacing,
       color: color,
-    );
+    ));
 
 /// Measures real rendered text sizes with TextPainter instead of estimating
 /// them from typographic constants. Char widths are cached, so repeated
@@ -25,17 +27,21 @@ TextStyle readerTextStyle(double fontSize, {Color? color}) => TextStyle(
 class WordMeasurer {
   WordMeasurer({
     required this.fontSize,
+    required this.font,
+    required this.translationFontSize,
     required this.textScaler,
   });
 
   final double fontSize;
+  final ReaderFont font;
+  final double translationFontSize;
   final TextScaler textScaler;
   final Map<String, double> _charWidths = {};
 
   double _charWidth(String char) {
     return _charWidths.putIfAbsent(char, () {
       final painter = TextPainter(
-        text: TextSpan(text: char, style: readerTextStyle(fontSize)),
+        text: TextSpan(text: char, style: readerTextStyle(fontSize, font: font)),
         textDirection: TextDirection.ltr,
         textScaler: textScaler,
       )..layout();
@@ -56,15 +62,16 @@ class WordMeasurer {
   }
 
   /// Real height of one word row: the word line plus the always-reserved
-  /// translation line under it (0.7 ratio must match _WordWidget).
+  /// translation line under it - translationFontSize must match what
+  /// _WordWidget actually renders, whatever the user set it to.
   double rowHeight() {
     final wordPainter = TextPainter(
-      text: TextSpan(text: 'Йy', style: readerTextStyle(fontSize)),
+      text: TextSpan(text: 'Йy', style: readerTextStyle(fontSize, font: font)),
       textDirection: TextDirection.ltr,
       textScaler: textScaler,
     )..layout();
     final translationPainter = TextPainter(
-      text: TextSpan(text: 'Йy', style: readerTextStyle(fontSize * 0.7)),
+      text: TextSpan(text: 'Йy', style: readerTextStyle(translationFontSize, font: font)),
       textDirection: TextDirection.ltr,
       textScaler: textScaler,
     )..layout();
@@ -77,6 +84,9 @@ class WordMeasurer {
 
 /// Simulates the reader's Wrap layout word by word with measured widths,
 /// cutting a new page when the next row would not fit the container height.
+/// [chapterBreaks] are word indices a chapter starts at (see Chapter.wordIndex) -
+/// a page is force-cut right before any of them, so a chapter never has to
+/// share a page with the tail end of the previous one.
 List<List<String>> paginateMeasured({
   required List<String> words,
   required WordMeasurer measurer,
@@ -84,6 +94,7 @@ List<List<String>> paginateMeasured({
   required double containerHeight,
   double wordSpacing = readerWordSpacing,
   double runSpacing = readerRunSpacing,
+  Set<int> chapterBreaks = const {},
 }) {
   final pages = <List<String>>[];
   var page = <String>[];
@@ -92,7 +103,16 @@ List<List<String>> paginateMeasured({
   var lineX = 0.0;
   var usedHeight = rowHeight;
 
-  for (final word in words) {
+  for (var i = 0; i < words.length; i++) {
+    final word = words[i];
+
+    if (chapterBreaks.contains(i) && page.isNotEmpty) {
+      pages.add(page);
+      page = <String>[];
+      usedHeight = rowHeight;
+      lineX = 0;
+    }
+
     if (word == paragraphBreak) {
       // Forces the next word onto a new row, same page-break logic as an
       // ordinary wrap - just triggered explicitly instead of by width.
