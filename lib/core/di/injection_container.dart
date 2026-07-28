@@ -5,6 +5,12 @@ import 'package:read_ru/features/library/domain/repositories/library_repository.
 import 'package:read_ru/features/library/data/repositories/library_repository_impl.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_cubit.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_cubit.dart';
+import 'package:read_ru/features/settings/data/datasources/settings_local_data_source.dart';
+import 'package:read_ru/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:read_ru/features/word_bucket/data/datasources/word_bucket_local_data_source.dart';
+import 'package:read_ru/features/word_bucket/data/repositories/word_bucket_repository_impl.dart';
+import 'package:read_ru/features/word_bucket/domain/repositories/word_bucket_repository.dart';
+import 'package:read_ru/features/word_bucket/presentation/cubit/word_bucket_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -22,5 +28,17 @@ void setupLocator() {
   getIt.registerLazySingleton<LibraryRepository>(() => LibraryRepositoryImpl(getIt<LibraryLocalDataSource>(), getIt<LibraryStorageDataSource>()),);
 
 
-  getIt.registerFactory<LibraryListCubit>(() => LibraryListCubit(getIt<LibraryRepository>()));
+  // Settings - one long-lived instance shared by SettingsScreen, the reader
+  // (initial font/translation defaults) and main.dart (theming).
+  getIt.registerLazySingleton<SettingsLocalDataSource>(() => SettingsLocalDataSource());
+  getIt.registerLazySingleton<SettingsCubit>(() => SettingsCubit(getIt<SettingsLocalDataSource>()));
+
+  // Word bucket
+  getIt.registerLazySingleton<WordBucketLocalDataSource>(() => WordBucketLocalDataSource());
+  getIt.registerLazySingleton<WordBucketRepository>(
+      () => WordBucketRepositoryImpl(getIt<WordBucketLocalDataSource>()));
+  getIt.registerFactory<WordBucketCubit>(() => WordBucketCubit(getIt<WordBucketRepository>()));
+
+  getIt.registerFactory<LibraryListCubit>(
+      () => LibraryListCubit(getIt<LibraryRepository>(), getIt<WordBucketRepository>()));
 }
