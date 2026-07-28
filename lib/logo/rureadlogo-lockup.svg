@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="70" viewBox="0 0 220 70">
+<g transform="translate(0,15)">
+<path d="M22 6 C16 2 8 2 3 4 V28 C8 26 16 26 22 30 Z" fill="#0039A6"></path>
+<path d="M22 6 C28 2 36 2 41 4 V28 C36 26 28 26 22 30 Z" fill="#D52B1E"></path>
+</g>
+<text x="56" y="46" font-family="Georgia, &#39;Literata&#39;, serif" font-weight="600" font-size="34" fill="#1D1C1A">RuRead</text>
+</svg>
