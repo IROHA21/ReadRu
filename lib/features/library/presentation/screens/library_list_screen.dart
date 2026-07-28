@@ -1,11 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/di/injection_container.dart';
+import 'package:read_ru/core/widgets/page_turn_loader.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_cubit.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_state.dart';
+import 'package:read_ru/features/library/presentation/screens/document_info_screen.dart';
 import 'package:read_ru/features/library/presentation/screens/document_viewer_screen.dart';
+import 'package:read_ru/features/settings/presentation/screens/settings_screen.dart';
+import 'package:read_ru/features/word_bucket/presentation/screens/word_bucket_screen.dart';
 
 class LibraryListScreen extends StatelessWidget {
   const LibraryListScreen({super.key});
@@ -24,8 +29,9 @@ class _LibraryListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,24 +41,34 @@ class _LibraryListView extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     'Library',
                     style: TextStyle(
                       fontFamily: 'serif',
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.search, color: AppColors.textPrimary),
-                        onPressed: () {},
+                        icon: Icon(Icons.translate, color: colors.textPrimary),
+                        tooltip: 'Word Bucket',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const WordBucketScreen()),
+                          );
+                        },
                       ),
                       IconButton(
-                        icon: const Icon(Icons.menu, color: AppColors.textPrimary),
-                        onPressed: () {},
+                        icon: Icon(Icons.settings, color: colors.textPrimary),
+                        tooltip: 'Settings',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -71,7 +87,7 @@ class _LibraryListView extends StatelessWidget {
                 builder: (context, state) {
                   return switch (state) {
                     LibraryListInitial() || LibraryListLoading() || LibraryListError() =>
-                      const Center(child: CircularProgressIndicator()),
+                      const Center(child: PageTurnLoader()),
                     LibraryListLoaded() => _LibraryListContent(documents: state.documents),
                   };
                 },
@@ -81,7 +97,7 @@ class _LibraryListView extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.accent,
+        backgroundColor: colors.accent,
         onPressed: () => context.read<LibraryListCubit>().addDocument(),
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -96,6 +112,7 @@ class _LibraryListContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       children: [
@@ -121,12 +138,12 @@ class _LibraryListContent extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.textSecondary.withValues(alpha: 0.4)),
+              border: Border.all(color: colors.textSecondary.withValues(alpha: 0.4)),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text(
+            child: Text(
               'Add your first document to begin reading.',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: colors.textSecondary),
             ),
           ),
       ],
@@ -141,6 +158,7 @@ class _DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () async {
@@ -153,18 +171,30 @@ class _DocumentCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: colors.card,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.thumbnailPlaceholder,
-                borderRadius: BorderRadius.circular(8),
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: document.coverImageBase64 != null
+                  ? Image.memory(
+                      base64Decode(document.coverImageBase64!),
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 48,
+                        height: 48,
+                        color: colors.thumbnailPlaceholder,
+                      ),
+                    )
+                  : Container(
+                      width: 48,
+                      height: 48,
+                      color: colors.thumbnailPlaceholder,
+                    ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -173,16 +203,16 @@ class _DocumentCard extends StatelessWidget {
                 children: [
                   Text(
                     document.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '${(document.progress * 100).round()}% · ${document.format.name.toUpperCase()}',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    style: TextStyle(fontSize: 13, color: colors.textSecondary),
                   ),
                   const SizedBox(height: 8),
                   ClipRRect(
@@ -190,21 +220,77 @@ class _DocumentCard extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: document.progress,
                       minHeight: 4,
-                      backgroundColor: AppColors.progressTrack,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                      backgroundColor: colors.progressTrack,
+                      valueColor: AlwaysStoppedAnimation(colors.accent),
                     ),
                   ),
                 ],
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.delete_outline, color: AppColors.textSecondary),
-              onPressed: () => _confirmDelete(context, document),
+            PopupMenuButton<_DocumentAction>(
+              icon: Icon(Icons.more_vert, color: colors.textSecondary),
+              onSelected: (action) {
+                switch (action) {
+                  case _DocumentAction.info:
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => DocumentInfoScreen(document: document)),
+                    );
+                  case _DocumentAction.rename:
+                    _renameDocument(context, document);
+                  case _DocumentAction.delete:
+                    _confirmDelete(context, document);
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: _DocumentAction.info,
+                  child: Text('Info'),
+                ),
+                PopupMenuItem(
+                  value: _DocumentAction.rename,
+                  child: Text('Rename'),
+                ),
+                PopupMenuItem(
+                  value: _DocumentAction.delete,
+                  child: Text('Delete'),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _renameDocument(BuildContext context, Document document) async {
+    final cubit = context.read<LibraryListCubit>();
+    final controller = TextEditingController(text: document.title);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Rename book'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Title'),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newTitle != null && newTitle.trim().isNotEmpty) {
+      cubit.renameDocument(document, newTitle);
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, Document document) async {
@@ -232,3 +318,5 @@ class _DocumentCard extends StatelessWidget {
     }
   }
 }
+
+enum _DocumentAction { info, rename, delete }
