@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:http/http.dart' as http;
 import 'package:read_ru/core/config/app_colors.dart';
@@ -96,6 +97,18 @@ String _displayTranslation(String raw, AppLocalizations l10n) {
   if (raw == translationFailedMarker) return l10n.translationFailed;
   if (raw == translationUnsupportedMarker) return l10n.translationUnsupported;
   return raw;
+}
+
+// ML Kit translation works fully offline, but its on-device models are
+// weaker than Yandex's cloud translation - which needs internet and is
+// unreachable when there's no connection. Warn once per book-open rather
+// than staying silent about why translations might read worse than usual.
+Future<void> _warnIfOffline(BuildContext context) async {
+  final results = await Connectivity().checkConnectivity();
+  if (results.hasConnectivity || !context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(AppLocalizations.of(context)!.offlineTranslationWarning)),
+  );
 }
 
 Future<String> _translateWithYandex(String word, String sourceCode, String targetCode) async {
@@ -345,6 +358,7 @@ class _ReaderContent extends StatelessWidget {
                               initialTranslatedWords: initialTranslatedWords,
                               chapters: chapters,
                             );
+                            unawaited(_warnIfOffline(context));
                           }
                         });
                       }

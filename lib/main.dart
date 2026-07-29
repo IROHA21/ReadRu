@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
@@ -13,11 +14,31 @@ import 'package:read_ru/features/settings/domain/reader_settings.dart';
 import 'package:read_ru/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:read_ru/l10n/generated/app_localizations.dart';
 
+// Held at the app root (rather than some specific screen's BuildContext)
+// so the startup offline check - which fires before any screen is
+// necessarily settled (onboarding vs library) - has somewhere to show a
+// SnackBar regardless of which one ends up on screen first.
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() {
   setupLocator();
   // Fire-and-forget: don't block first frame on ad SDK init/prefetch.
   unawaited(getIt<InterstitialAdManager>().initialize().then((_) => getIt<InterstitialAdManager>().load()));
   runApp(const MyApp());
+  WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_warnIfOfflineAtStartup()));
+}
+
+// Same offline warning the reader shows again each time a book is opened
+// (reader_view.dart's _warnIfOffline) - this one covers the moment the app
+// itself launches, before any book has been touched.
+Future<void> _warnIfOfflineAtStartup() async {
+  final results = await Connectivity().checkConnectivity();
+  if (results.hasConnectivity) return;
+  final context = scaffoldMessengerKey.currentContext;
+  if (context == null || !context.mounted) return;
+  scaffoldMessengerKey.currentState?.showSnackBar(
+    SnackBar(content: Text(AppLocalizations.of(context)!.offlineTranslationWarning)),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -36,6 +57,7 @@ class MyApp extends StatelessWidget {
             builder: (context, onboarding) {
               return MaterialApp(
                 title: 'AnyRead',
+                scaffoldMessengerKey: scaffoldMessengerKey,
                 theme: ThemeData(
                   brightness: Brightness.light,
                   colorScheme: ColorScheme.fromSeed(seedColor: AppColors.light.accent),
