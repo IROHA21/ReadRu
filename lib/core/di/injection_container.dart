@@ -5,6 +5,8 @@ import 'package:read_ru/features/library/domain/repositories/library_repository.
 import 'package:read_ru/features/library/data/repositories/library_repository_impl.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_cubit.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_cubit.dart';
+import 'package:read_ru/features/onboarding/data/datasources/onboarding_local_data_source.dart';
+import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
 import 'package:read_ru/features/settings/data/datasources/settings_local_data_source.dart';
 import 'package:read_ru/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:read_ru/features/word_bucket/data/datasources/word_bucket_local_data_source.dart';
@@ -25,13 +27,19 @@ void setupLocator() {
 
   getIt.registerLazySingleton<LibraryStorageDataSource>(() => LibraryStorageDataSource());
 
-  getIt.registerLazySingleton<LibraryRepository>(() => LibraryRepositoryImpl(getIt<LibraryLocalDataSource>(), getIt<LibraryStorageDataSource>()),);
+  getIt.registerLazySingleton<LibraryRepository>(() => LibraryRepositoryImpl(
+      getIt<LibraryLocalDataSource>(), getIt<LibraryStorageDataSource>(), getIt<OnboardingLocalDataSource>()),);
 
 
   // Settings - one long-lived instance shared by SettingsScreen, the reader
   // (initial font/translation defaults) and main.dart (theming).
   getIt.registerLazySingleton<SettingsLocalDataSource>(() => SettingsLocalDataSource());
   getIt.registerLazySingleton<SettingsCubit>(() => SettingsCubit(getIt<SettingsLocalDataSource>()));
+
+  // Onboarding - singleton so main.dart's completion gate and the flow's
+  // own screens read/write the exact same state.
+  getIt.registerLazySingleton<OnboardingLocalDataSource>(() => OnboardingLocalDataSource());
+  getIt.registerLazySingleton<OnboardingCubit>(() => OnboardingCubit(getIt<OnboardingLocalDataSource>()));
 
   // Word bucket
   getIt.registerLazySingleton<WordBucketLocalDataSource>(() => WordBucketLocalDataSource());

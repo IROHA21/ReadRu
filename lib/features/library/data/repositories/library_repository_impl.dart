@@ -1,11 +1,13 @@
 
 import 'package:flutter/foundation.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:read_ru/features/library/data/datasources/library_storage_data_source.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 import 'package:read_ru/features/library/data/datasources/library_local_data_source.dart';
 import 'package:read_ru/features/library/domain/entities/chapter.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'package:read_ru/features/library/domain/normalize_extracted_text.dart';
+import 'package:read_ru/features/onboarding/data/datasources/onboarding_local_data_source.dart';
 
 class LibraryRepositoryImpl implements LibraryRepository {
 
@@ -15,8 +17,9 @@ class LibraryRepositoryImpl implements LibraryRepository {
 //   }  this is welding it , but we want to be able to replace it for unit tests
   final LibraryLocalDataSource dataSource;
   final LibraryStorageDataSource storageDataSource;
+  final OnboardingLocalDataSource onboardingDataSource;
 
-  LibraryRepositoryImpl(this.dataSource, this.storageDataSource);
+  LibraryRepositoryImpl(this.dataSource, this.storageDataSource, this.onboardingDataSource);
 
   @override
   Future<Document?> pickDocument() async {
@@ -46,6 +49,17 @@ class LibraryRepositoryImpl implements LibraryRepository {
 
     final title = metadata?.title ?? filenameTitle;
 
+    // No format-provided language (pdf/txt, or extraction found none) -
+    // fall back to whatever the user said their books are in during
+    // onboarding. Still overridable later from the book's Info screen.
+    String? language = metadata?.language;
+    if (language == null) {
+      final onboarding = await onboardingDataSource.getSettings();
+      if (onboarding.bookLanguages.isNotEmpty) {
+        language = onboarding.bookLanguages.first.bcpCode;
+      }
+    }
+
     final library = await storageDataSource.getSavedDocuments();
 
     final alreadyExists = library.any((doc) =>
@@ -65,7 +79,7 @@ class LibraryRepositoryImpl implements LibraryRepository {
       chapters: metadata?.chapters ?? const [],
       author: metadata?.author,
       description: metadata?.description,
-      language: metadata?.language,
+      language: language,
     );
 
 
@@ -108,6 +122,34 @@ class LibraryRepositoryImpl implements LibraryRepository {
     final index = library.indexWhere((doc) => doc.id == document.id);
     if (index == -1) return;
     library[index] = document.copyWith(title: newTitle);
+    await storageDataSource.saveDocuments(library);
+  }
+
+  @override
+  Future<void> setDocumentLanguage(Document document, String? languageCode) async {
+    final library = await storageDataSource.getSavedDocuments();
+    final index = library.indexWhere((doc) => doc.id == document.id);
+    if (index == -1) return;
+
+    // Built directly, not via copyWith - copyWith can't set a field back to
+    // null (its `?? this.x` pattern treats null as "leave unchanged"), and
+    // clearing the override needs to be possible here.
+    final current = library[index];
+    library[index] = Document(
+      id: current.id,
+      title: current.title,
+      filepath: current.filepath,
+      format: current.format,
+      progress: current.progress,
+      lastWordIndex: current.lastWordIndex,
+      tappedWordIndices: current.tappedWordIndices,
+      translatedWords: current.translatedWords,
+      coverImageBase64: current.coverImageBase64,
+      chapters: current.chapters,
+      author: current.author,
+      description: current.description,
+      language: languageCode,
+    );
     await storageDataSource.saveDocuments(library);
   }
 

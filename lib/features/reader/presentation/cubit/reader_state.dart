@@ -1,5 +1,17 @@
 import 'package:read_ru/features/settings/domain/reader_font.dart';
 
+// Sentinel translation results that should never be cached (per-word in
+// Document.translatedWords, or in reader_view.dart's in-memory cache) or
+// saved to the word bucket - they're not real translations, just reasons
+// one didn't happen.
+const String translationFailedMarker = '(failed)';
+const String translationUnsupportedMarker = '(language not supported)';
+
+bool isUsableTranslation(String translation) =>
+    translation.isNotEmpty &&
+    translation != translationFailedMarker &&
+    translation != translationUnsupportedMarker;
+
 sealed class ReaderState {}
 
 class ReaderInitial extends ReaderState {}

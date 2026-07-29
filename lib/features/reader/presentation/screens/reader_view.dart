@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:http/http.dart' as http;
 import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/config/secrets.dart';
 import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/core/widgets/page_turn_loader.dart';
 import 'package:read_ru/features/library/domain/entities/chapter.dart';
+import 'package:read_ru/features/onboarding/domain/supported_languages.dart';
+import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
 import 'package:read_ru/features/reader/domain/split_into_words.dart';
 import 'package:read_ru/features/reader/presentation/cubit/reader_cubit.dart';
 import 'package:read_ru/features/reader/presentation/cubit/reader_state.dart';
@@ -18,9 +22,8 @@ import 'package:read_ru/features/settings/presentation/screens/settings_screen.d
 import 'package:read_ru/features/word_bucket/domain/entities/word_bucket_entry.dart';
 import 'package:read_ru/features/word_bucket/domain/repositories/word_bucket_repository.dart';
 
-// DIRTY TEST CODE - no repository, no error UI beyond a fallback string.
-// Delete this whole block once Phase 3 builds the real TranslationRepository.
-// Real key/folder live in secrets.dart (gitignored) - see secrets.example.dart.
+// TRANSLATION - keyed by "source>target:word" so the same raw word doesn't
+// collide across different book/spoken-language pairs.
 final Map<String, String> _translationCache = {};
 
 // Strips leading/trailing punctuation - \p{L}/\p{N} match any letter/number
@@ -29,10 +32,61 @@ String _stripPunctuation(String word) {
   return word.replaceAll(RegExp(r'^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$', unicode: true), '');
 }
 
-Future<String> _translateWord(String word) async {
-  if (_translationCache.containsKey(word)) {
-    return _translationCache[word]!;
+// TEMPORARY DEBUG SWITCH - set back to false once ML Kit is confirmed
+// working. While true, a failed/empty/unchanged on-device result shows
+// directly as "(ml kit failed)" instead of silently falling back to
+// Yandex, so ML Kit's own behavior is visible instead of being masked.
+const bool _debugDisableYandexFallback = true;
+
+// ML Kit on-device translation first (silent, offline, free); Yandex is a
+// silent fallback for whatever ML Kit doesn't handle well - a thrown error
+// (model not downloaded, unsupported pair), an empty result, or a result
+// that's just the input unchanged. No user-facing toggle between the two.
+//
+// [sourceLanguage] is null when the book's language isn't set or isn't one
+// ML Kit/Yandex can translate - in that case there's nothing to try, so this
+// says so directly instead of guessing.
+Future<String> _translateWord(
+  String word, {
+  required TranslateLanguage? sourceLanguage,
+  required TranslateLanguage? targetLanguage,
+}) async {
+  if (sourceLanguage == null) {
+    return translationUnsupportedMarker;
   }
+  final target = targetLanguage ?? TranslateLanguage.english;
+
+  final cacheKey = '${sourceLanguage.bcpCode}>${target.bcpCode}:$word';
+  final cached = _translationCache[cacheKey];
+  if (cached != null) return cached;
+
+  final onDevice = await _translateOnDevice(word, sourceLanguage, target);
+  final result = onDevice ??
+      (_debugDisableYandexFallback
+          ? '(ml kit failed)'
+          : await _translateWithYandex(word, sourceLanguage.bcpCode, target.bcpCode));
+
+  if (isUsableTranslation(result)) _translationCache[cacheKey] = result;
+  return result;
+}
+
+// Returns null (not the fallback string) whenever the on-device result
+// isn't usable, so the caller knows to fall through to Yandex.
+Future<String?> _translateOnDevice(String word, TranslateLanguage source, TranslateLanguage target) async {
+  final translator = OnDeviceTranslator(sourceLanguage: source, targetLanguage: target);
+  try {
+    final result = (await translator.translateText(word)).trim();
+    if (result.isEmpty) return null;
+    if (result.toLowerCase() == word.trim().toLowerCase()) return null;
+    return result;
+  } catch (_) {
+    return null;
+  } finally {
+    unawaited(translator.close());
+  }
+}
+
+Future<String> _translateWithYandex(String word, String sourceCode, String targetCode) async {
   try {
     final response = await http.post(
       Uri.parse('https://translate.api.cloud.yandex.net/translate/v2/translate'),
@@ -43,16 +97,14 @@ Future<String> _translateWord(String word) async {
       body: jsonEncode({
         'folderId': yandexTranslateFolderId,
         'texts': [word],
-        'sourceLanguageCode': 'ru',
-        'targetLanguageCode': 'en',
+        'sourceLanguageCode': sourceCode,
+        'targetLanguageCode': targetCode,
       }),
     );
     final decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-    final translated = (decoded['translations'] as List).first['text'] as String;
-    _translationCache[word] = translated;
-    return translated;
+    return (decoded['translations'] as List).first['text'] as String;
   } catch (e) {
-    return '(failed)';
+    return translationFailedMarker;
   }
 }
 
@@ -60,6 +112,10 @@ class ReaderView extends StatelessWidget {
   final String text;
   final String documentId;
   final String documentTitle;
+  // BCP-47 code (Document.language) - the language this book is written
+  // in, i.e. the translation source. Null means untranslatable (see
+  // translateLanguageFromCode).
+  final String? documentLanguage;
   final List<Chapter> chapters;
   final int initialWordIndex;
   final Set<int> initialTappedWordIndices;
@@ -76,6 +132,7 @@ class ReaderView extends StatelessWidget {
     required this.text,
     required this.documentId,
     required this.documentTitle,
+    this.documentLanguage,
     this.chapters = const [],
     this.initialWordIndex = 0,
     this.initialTappedWordIndices = const {},
@@ -84,7 +141,7 @@ class ReaderView extends StatelessWidget {
   });
 
   void _onWordTranslated(String word, String translation) {
-    if (translation.isEmpty || translation == '(failed)') return;
+    if (!isUsableTranslation(translation)) return;
     getIt<WordBucketRepository>().addEntry(WordBucketEntry(
       word: word,
       translation: translation,
@@ -99,6 +156,7 @@ class ReaderView extends StatelessWidget {
       create: (_) => ReaderCubit(onProgressChanged: onProgressChanged),
       child: _ReaderContent(
         text: text,
+        sourceLanguage: translateLanguageFromCode(documentLanguage),
         chapters: chapters,
         initialWordIndex: initialWordIndex,
         initialTappedWordIndices: initialTappedWordIndices,
@@ -111,6 +169,7 @@ class ReaderView extends StatelessWidget {
 
 class _ReaderContent extends StatelessWidget {
   final String text;
+  final TranslateLanguage? sourceLanguage;
   final List<Chapter> chapters;
   final int initialWordIndex;
   final Set<int> initialTappedWordIndices;
@@ -119,6 +178,7 @@ class _ReaderContent extends StatelessWidget {
 
   const _ReaderContent({
     required this.text,
+    required this.sourceLanguage,
     required this.chapters,
     required this.initialWordIndex,
     required this.initialTappedWordIndices,
@@ -273,6 +333,7 @@ class _ReaderContent extends StatelessWidget {
                         ReaderLoaded() => _ReaderPage(
                             state: state,
                             settings: settings,
+                            sourceLanguage: sourceLanguage,
                             onWordTranslated: onWordTranslated,
                           ),
                       };
@@ -283,7 +344,7 @@ class _ReaderContent extends StatelessWidget {
               ),
             ),
             if (loaded != null && loaded.isSelecting)
-              _SelectionToolbar(colors: colors, onWordTranslated: onWordTranslated)
+              _SelectionToolbar(colors: colors, sourceLanguage: sourceLanguage, onWordTranslated: onWordTranslated)
             else
               Container(
                 decoration: BoxDecoration(
@@ -349,11 +410,13 @@ Chapter? _currentChapter(List<Chapter> chapters, ReaderLoaded state) {
 class _ReaderPage extends StatelessWidget {
   final ReaderLoaded state;
   final ReaderSettings settings;
+  final TranslateLanguage? sourceLanguage;
   final void Function(String word, String translation) onWordTranslated;
 
   const _ReaderPage({
     required this.state,
     required this.settings,
+    required this.sourceLanguage,
     required this.onWordTranslated,
   });
 
@@ -383,6 +446,7 @@ class _ReaderPage extends StatelessWidget {
           else
             _WordWidget(
               word: currentWords[i],
+              sourceLanguage: sourceLanguage,
               isTapped: state.tappedWordIndices.contains(startIndex + i),
               isSelected: _inSelection(startIndex + i),
               cachedTranslation: state.translatedWords[startIndex + i],
@@ -413,6 +477,7 @@ class _ReaderPage extends StatelessWidget {
 
 class _WordWidget extends StatefulWidget {
   final String word;
+  final TranslateLanguage? sourceLanguage;
   final bool isTapped;
   // Part of an in-progress phrase selection (long-press mode) - takes
   // visual precedence over the tap-to-translate highlight.
@@ -432,6 +497,7 @@ class _WordWidget extends StatefulWidget {
 
   const _WordWidget({
     required this.word,
+    required this.sourceLanguage,
     required this.isTapped,
     required this.isSelected,
     required this.cachedTranslation,
@@ -485,7 +551,12 @@ class _WordWidgetState extends State<_WordWidget> {
     }
 
     setState(() => _loading = true);
-    final result = await _translateWord(cleaned);
+    final targetLanguage = context.read<OnboardingCubit>().state.spokenLanguage;
+    final result = await _translateWord(
+      cleaned,
+      sourceLanguage: widget.sourceLanguage,
+      targetLanguage: targetLanguage,
+    );
     if (mounted) {
       setState(() {
         _translation = result;
@@ -592,9 +663,10 @@ class _ChapterListSheet extends StatelessWidget {
 // translate it or back out of selection mode entirely.
 class _SelectionToolbar extends StatelessWidget {
   final AppColors colors;
+  final TranslateLanguage? sourceLanguage;
   final void Function(String word, String translation) onWordTranslated;
 
-  const _SelectionToolbar({required this.colors, required this.onWordTranslated});
+  const _SelectionToolbar({required this.colors, required this.sourceLanguage, required this.onWordTranslated});
 
   @override
   Widget build(BuildContext context) {
@@ -629,7 +701,11 @@ class _SelectionToolbar extends StatelessWidget {
                     showModalBottomSheet(
                       context: context,
                       isScrollControlled: true,
-                      builder: (_) => _PhraseTranslationSheet(phrase: phrase, onSaved: onWordTranslated),
+                      builder: (_) => _PhraseTranslationSheet(
+                        phrase: phrase,
+                        sourceLanguage: sourceLanguage,
+                        onSaved: onWordTranslated,
+                      ),
                     );
                   },
             icon: Icon(Icons.translate, color: colors.accent),
@@ -646,9 +722,10 @@ class _SelectionToolbar extends StatelessWidget {
 // since that matters for phrase-level machine translation.
 class _PhraseTranslationSheet extends StatefulWidget {
   final String phrase;
+  final TranslateLanguage? sourceLanguage;
   final void Function(String word, String translation) onSaved;
 
-  const _PhraseTranslationSheet({required this.phrase, required this.onSaved});
+  const _PhraseTranslationSheet({required this.phrase, required this.sourceLanguage, required this.onSaved});
 
   @override
   State<_PhraseTranslationSheet> createState() => _PhraseTranslationSheetState();
@@ -665,7 +742,12 @@ class _PhraseTranslationSheetState extends State<_PhraseTranslationSheet> {
   }
 
   Future<void> _translate() async {
-    final result = await _translateWord(widget.phrase);
+    final targetLanguage = context.read<OnboardingCubit>().state.spokenLanguage;
+    final result = await _translateWord(
+      widget.phrase,
+      sourceLanguage: widget.sourceLanguage,
+      targetLanguage: targetLanguage,
+    );
     if (mounted) setState(() => _translation = result);
   }
 
@@ -673,7 +755,7 @@ class _PhraseTranslationSheetState extends State<_PhraseTranslationSheet> {
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final translation = _translation;
-    final canSave = translation != null && translation != '(failed)' && !_saved;
+    final canSave = translation != null && isUsableTranslation(translation) && !_saved;
 
     return SafeArea(
       child: Padding(

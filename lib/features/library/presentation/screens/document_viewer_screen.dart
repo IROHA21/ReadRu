@@ -45,6 +45,7 @@ class DocumentViewerScreen extends StatelessWidget {
                     text: state.text,
                     documentId: document.id,
                     documentTitle: document.title,
+                    documentLanguage: document.language,
                     chapters: document.chapters,
                     initialWordIndex: document.lastWordIndex,
                     initialTappedWordIndices: document.tappedWordIndices.toSet(),

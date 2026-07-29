@@ -205,7 +205,7 @@ class ReaderCubit extends Cubit<ReaderState>{
   void setTranslation(int wordIndex, String translation) {
     final current = state;
     if (current is! ReaderLoaded) return;
-    if (translation.isEmpty || translation == '(failed)') return;
+    if (!isUsableTranslation(translation)) return;
 
     final updated = Map<int, String>.from(current.translatedWords);
     updated[wordIndex] = translation;

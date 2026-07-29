@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/features/library/presentation/screens/library_list_screen.dart';
+import 'package:read_ru/features/onboarding/domain/onboarding_settings.dart';
+import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
+import 'package:read_ru/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:read_ru/features/settings/domain/reader_settings.dart';
 import 'package:read_ru/features/settings/presentation/cubit/settings_cubit.dart';
 
@@ -16,12 +19,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: getIt<SettingsCubit>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: getIt<SettingsCubit>()),
+        BlocProvider.value(value: getIt<OnboardingCubit>()),
+      ],
       child: BlocBuilder<SettingsCubit, ReaderSettings>(
         builder: (context, settings) {
           return MaterialApp(
-            title: 'RuRead',
+            title: 'AnyRead',
             theme: ThemeData(
               brightness: Brightness.light,
               colorScheme: ColorScheme.fromSeed(seedColor: AppColors.light.accent),
@@ -35,7 +41,13 @@ class MyApp extends StatelessWidget {
               scaffoldBackgroundColor: AppColors.dark.background,
             ),
             themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            home: const LibraryListScreen(),
+            home: BlocBuilder<OnboardingCubit, OnboardingSettings>(
+              builder: (context, onboarding) {
+                return onboarding.onboardingComplete
+                    ? const LibraryListScreen()
+                    : OnboardingScreen(onComplete: () {});
+              },
+            ),
           );
         },
       ),

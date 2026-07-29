@@ -1,8 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:read_ru/core/config/app_colors.dart';
+import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
+import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
+import 'package:read_ru/features/onboarding/domain/supported_languages.dart';
 
 // Best-effort ISO 639-1 (or the first two letters of whatever the format
 // gave us) -> flag emoji. Falls back to a globe when the code isn't one we
@@ -31,14 +35,52 @@ String _formatBytes(int bytes) {
   return '${mb.toStringAsFixed(1)} MB';
 }
 
-class DocumentInfoScreen extends StatelessWidget {
+class DocumentInfoScreen extends StatefulWidget {
   final Document document;
 
   const DocumentInfoScreen({super.key, required this.document});
 
   @override
+  State<DocumentInfoScreen> createState() => _DocumentInfoScreenState();
+}
+
+class _DocumentInfoScreenState extends State<DocumentInfoScreen> {
+  late Document _document;
+
+  @override
+  void initState() {
+    super.initState();
+    _document = widget.document;
+  }
+
+  Future<void> _pickLanguage() async {
+    final selected = await showModalBottomSheet<TranslateLanguage>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _LanguagePickerSheet(),
+    );
+    if (selected == null) return;
+
+    await getIt<LibraryRepository>().setDocumentLanguage(_document, selected.bcpCode);
+    if (!mounted) return;
+    setState(() => _document = _document.copyWith(language: selected.bcpCode));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final document = _document;
+    final language = document.language;
+    final supported = translateLanguageFromCode(language);
+
+    final String languageValue;
+    if (language == null) {
+      languageValue = 'Not set - tap to choose';
+    } else if (supported != null) {
+      languageValue = '${_flagFor(language)} ${translateLanguageName(supported)}';
+    } else {
+      languageValue = '${_flagFor(language)} $language (not supported for translation)';
+    }
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -68,12 +110,15 @@ class DocumentInfoScreen extends StatelessWidget {
           const SizedBox(height: 24),
           _InfoRow(label: 'Title', value: document.title, colors: colors),
           if (document.author != null) _InfoRow(label: 'Author', value: document.author!, colors: colors),
-          if (document.language != null)
-            _InfoRow(
-              label: 'Language',
-              value: '${_flagFor(document.language!)} ${document.language}',
+          InkWell(
+            onTap: _pickLanguage,
+            child: _InfoRow(
+              label: 'Language of the book',
+              value: languageValue,
               colors: colors,
+              trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
             ),
+          ),
           _InfoRow(label: 'Format', value: document.format.name.toUpperCase(), colors: colors),
           FutureBuilder<int>(
             future: File(document.filepath).length(),
@@ -104,6 +149,68 @@ class DocumentInfoScreen extends StatelessWidget {
   }
 }
 
+class _LanguagePickerSheet extends StatefulWidget {
+  const _LanguagePickerSheet();
+
+  @override
+  State<_LanguagePickerSheet> createState() => _LanguagePickerSheetState();
+}
+
+class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final languages = allSupportedLanguages
+        .where((l) => translateLanguageName(l).toLowerCase().contains(_query.toLowerCase()))
+        .toList();
+
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.75,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(
+                'Language of the book',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: colors.textPrimary),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                autofocus: true,
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: 'Search languages',
+                  prefixIcon: const Icon(Icons.search),
+                  isDense: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                children: [
+                  for (final language in languages)
+                    ListTile(
+                      title: Text(translateLanguageName(language), style: TextStyle(color: colors.textPrimary)),
+                      onTap: () => Navigator.of(context).pop(language),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CoverPlaceholder extends StatelessWidget {
   final AppColors colors;
   const _CoverPlaceholder({required this.colors});
@@ -118,8 +225,9 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
   final AppColors colors;
+  final Widget? trailing;
 
-  const _InfoRow({required this.label, required this.value, required this.colors});
+  const _InfoRow({required this.label, required this.value, required this.colors, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +246,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(value, style: TextStyle(color: colors.textPrimary)),
           ),
+          ?trailing,
         ],
       ),
     );
