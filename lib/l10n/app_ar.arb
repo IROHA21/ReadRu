@@ -45,6 +45,7 @@
   "saveToWordBucket": "حفظ في سلة الكلمات",
   "translationFailed": "(فشلت الترجمة)",
   "translationUnsupported": "(اللغة غير مدعومة)",
+   "offlineTranslationWarning": "لا يوجد اتصال بالإنترنت - قد تكون الترجمات أقل دقة.",
 
   "readingFolderTitle": "القراءة",
   "readingFolderSubtitle": "الخط، الحجم، الوضع الليلي، لون التمييز، اتجاه تقليب الصفحات",

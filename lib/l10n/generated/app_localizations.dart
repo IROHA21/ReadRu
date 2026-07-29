@@ -362,6 +362,12 @@ abstract class AppLocalizations {
   /// **'(language not supported)'**
   String get translationUnsupported;
 
+  /// No description provided for @offlineTranslationWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection - translations may be less accurate.'**
+  String get offlineTranslationWarning;
+
   /// No description provided for @readingFolderTitle.
   ///
   /// In en, this message translates to:

@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:read_ru/features/ads/presentation/interstitial_ad_manager.dart';
 import 'package:read_ru/features/library/data/datasources/library_local_data_source.dart';
 import 'package:read_ru/features/library/data/datasources/library_storage_data_source.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
@@ -49,4 +50,9 @@ void setupLocator() {
 
   getIt.registerFactory<LibraryListCubit>(
       () => LibraryListCubit(getIt<LibraryRepository>(), getIt<WordBucketRepository>()));
+
+  // Ads - one long-lived interstitial slot, network picked once at
+  // startup (Yandex for CIS, AdMob elsewhere) and reused for every
+  // "before read" prompt.
+  getIt.registerLazySingleton<InterstitialAdManager>(() => InterstitialAdManager());
 }

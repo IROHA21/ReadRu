@@ -152,6 +152,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get translationUnsupported => '(不支持该语言)';
 
   @override
+  String get offlineTranslationWarning => '无网络连接——翻译准确度可能会降低。';
+
+  @override
   String get readingFolderTitle => '阅读';
 
   @override

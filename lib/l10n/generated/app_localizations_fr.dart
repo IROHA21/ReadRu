@@ -154,6 +154,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get translationUnsupported => '(langue non prise en charge)';
 
   @override
+  String get offlineTranslationWarning =>
+      'Aucune connexion internet - les traductions peuvent être moins précises.';
+
+  @override
   String get readingFolderTitle => 'Lecture';
 
   @override

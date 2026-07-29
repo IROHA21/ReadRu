@@ -156,6 +156,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get translationUnsupported => '(اللغة غير مدعومة)';
 
   @override
+  String get offlineTranslationWarning =>
+      'لا يوجد اتصال بالإنترنت - قد تكون الترجمات أقل دقة.';
+
+  @override
   String get readingFolderTitle => 'القراءة';
 
   @override

@@ -45,6 +45,7 @@
   "saveToWordBucket": "保存到生词本",
   "translationFailed": "(失败)",
   "translationUnsupported": "(不支持该语言)",
+  "offlineTranslationWarning": "无网络连接——翻译准确度可能会降低。",
 
   "readingFolderTitle": "阅读",
   "readingFolderSubtitle": "字体、大小、夜间模式、高亮颜色、翻页方式",

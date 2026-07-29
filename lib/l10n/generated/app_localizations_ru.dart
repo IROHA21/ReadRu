@@ -156,6 +156,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get translationUnsupported => '(язык не поддерживается)';
 
   @override
+  String get offlineTranslationWarning =>
+      'Нет подключения к интернету — перевод может быть менее точным.';
+
+  @override
   String get readingFolderTitle => 'Чтение';
 
   @override

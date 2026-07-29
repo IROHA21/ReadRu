@@ -63,6 +63,7 @@
   "saveToWordBucket": "Save to Word Bucket",
   "translationFailed": "(failed)",
   "translationUnsupported": "(language not supported)",
+  "offlineTranslationWarning": "No internet connection - translations may be less accurate.",
 
   "readingFolderTitle": "Reading",
   "readingFolderSubtitle": "Font, size, night mode, highlight color, page turns",

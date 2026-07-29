@@ -45,6 +45,7 @@
   "saveToWordBucket": "Сохранить в корзину слов",
   "translationFailed": "(не удалось)",
   "translationUnsupported": "(язык не поддерживается)",
+  "offlineTranslationWarning": "Нет подключения к интернету — перевод может быть менее точным.",
 
   "readingFolderTitle": "Чтение",
   "readingFolderSubtitle": "Шрифт, размер, ночной режим, цвет выделения, перелистывание страниц",

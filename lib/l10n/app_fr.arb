@@ -45,6 +45,7 @@
   "saveToWordBucket": "Enregistrer dans le panier de mots",
   "translationFailed": "(échec)",
   "translationUnsupported": "(langue non prise en charge)",
+  "offlineTranslationWarning": "Aucune connexion internet - les traductions peuvent être moins précises.",
 
   "readingFolderTitle": "Lecture",
   "readingFolderSubtitle": "Police, taille, mode nuit, couleur de surlignage, changement de page",

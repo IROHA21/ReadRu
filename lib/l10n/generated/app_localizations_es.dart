@@ -154,6 +154,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get translationUnsupported => '(idioma no compatible)';
 
   @override
+  String get offlineTranslationWarning =>
+      'Sin conexión a internet - las traducciones pueden ser menos precisas.';
+
+  @override
   String get readingFolderTitle => 'Lectura';
 
   @override

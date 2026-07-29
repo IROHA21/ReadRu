@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/di/injection_container.dart';
+import 'package:read_ru/features/ads/presentation/interstitial_ad_manager.dart';
 import 'package:read_ru/features/library/presentation/screens/library_list_screen.dart';
 import 'package:read_ru/features/onboarding/domain/onboarding_settings.dart';
 import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
@@ -13,6 +15,8 @@ import 'package:read_ru/l10n/generated/app_localizations.dart';
 
 void main() {
   setupLocator();
+  // Fire-and-forget: don't block first frame on ad SDK init/prefetch.
+  unawaited(getIt<InterstitialAdManager>().initialize().then((_) => getIt<InterstitialAdManager>().load()));
   runApp(const MyApp());
 }
 

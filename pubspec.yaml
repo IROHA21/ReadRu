@@ -49,6 +49,9 @@ dependencies:
     sdk: flutter
   intl: ^0.20.2
   google_mlkit_translation: ^0.14.0
+  google_mobile_ads: ^9.0.0
+  yandex_mobileads: ^8.2.0
+  connectivity_plus: ^7.3.1
 
 
 

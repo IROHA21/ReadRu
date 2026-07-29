@@ -45,6 +45,7 @@
   "saveToWordBucket": "Salvar na cesta de palavras",
   "translationFailed": "(falhou)",
   "translationUnsupported": "(idioma não suportado)",
+  "offlineTranslationWarning": "Sem conexão à internet - as traduções podem ser menos precisas.",
 
   "readingFolderTitle": "Leitura",
   "readingFolderSubtitle": "Fonte, tamanho, modo noturno, cor de destaque, virada de página",

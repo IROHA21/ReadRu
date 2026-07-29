@@ -1,8 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:read_ru/core/config/app_colors.dart';
 
-/// Brand loading animation: the RuRead book mark with its right page
+/// Brand loading animation: the AnyRead book mark with its right page
 /// endlessly turning, used wherever the app would otherwise show a bare
 /// spinner (library loading, opening a book, settings/word-bucket loads).
 class PageTurnLoader extends StatefulWidget {
@@ -41,13 +42,14 @@ class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Dark mode isn't just a recolor of the same roles - the static base
-    // already sits at the resting (blue/red) flag colors and a white page
-    // turns over it, landing on blue instead of red turning over white/blue.
-    final baseRight = isDark ? const Color(0xFFD52B1E) : Colors.white;
-    final pageColor = isDark ? Colors.white : const Color(0xFFD52B1E);
-    final inkColor = isDark ? Colors.white : const Color(0xFF1D1C1A);
+    final colors = AppColors.of(context);
+    // Single-hue brand mark (no more flag-color duality now that the app
+    // isn't Russian-specific): base right sits at the logo's own faded
+    // opacity, and the turning page is a solid accent - at rest it's
+    // indistinguishable from the solid left half, so the resting/looping
+    // frame reads exactly like the static logo, briefly going full-solid
+    // at the turn's peak before snapping back.
+    final baseRight = colors.accent.withValues(alpha: 0.55);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -64,7 +66,7 @@ class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProvid
                 children: [
                   CustomPaint(
                     size: const Size(160, 130),
-                    painter: _BookBasePainter(rightColor: baseRight),
+                    painter: _BookBasePainter(leftColor: colors.accent, rightColor: baseRight),
                   ),
                   Transform(
                     alignment: Alignment.center,
@@ -73,7 +75,7 @@ class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProvid
                       ..rotateY(angle),
                     child: CustomPaint(
                       size: const Size(160, 130),
-                      painter: _PagePainter(color: pageColor),
+                      painter: _PagePainter(color: colors.accent),
                     ),
                   ),
                 ],
@@ -83,11 +85,11 @@ class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProvid
         ),
         const SizedBox(height: 28),
         Text(
-          'RuRead',
+          'AnyRead',
           style: GoogleFonts.literata(
             fontWeight: FontWeight.w600,
             fontSize: 40,
-            color: inkColor,
+            color: colors.textPrimary,
           ),
         ),
       ],
@@ -96,7 +98,7 @@ class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProvid
 }
 
 // Shared geometry: the exact cubic-bezier outline from the app's own SVG
-// logo (lib/logo/rureadlogo-256.svg, viewBox 0 0 44 34, spine at x=22).
+// logo (lib/logo/anyreadlogo-256.svg, viewBox 0 0 44 34, spine at x=22).
 // Both halves are exact horizontal mirrors of each other around that spine,
 // so only the left-half path needs to be defined - the right half and the
 // rotating page (which starts over the left half and lands mirrored over
@@ -126,13 +128,14 @@ Path _leftHalfPath(Size size) {
 }
 
 class _BookBasePainter extends CustomPainter {
+  final Color leftColor;
   final Color rightColor;
-  const _BookBasePainter({required this.rightColor});
+  const _BookBasePainter({required this.leftColor, required this.rightColor});
 
   @override
   void paint(Canvas canvas, Size size) {
     final left = _leftHalfPath(size);
-    canvas.drawPath(left, Paint()..color = const Color(0xFF0039A6));
+    canvas.drawPath(left, Paint()..color = leftColor);
 
     // Right half is the exact mirror of the left - flip the canvas around
     // its vertical center rather than duplicating the path math.
@@ -144,7 +147,8 @@ class _BookBasePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _BookBasePainter oldDelegate) => oldDelegate.rightColor != rightColor;
+  bool shouldRepaint(covariant _BookBasePainter oldDelegate) =>
+      oldDelegate.leftColor != leftColor || oldDelegate.rightColor != rightColor;
 }
 
 class _PagePainter extends CustomPainter {

@@ -5,6 +5,7 @@ import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/core/widgets/page_turn_loader.dart';
+import 'package:read_ru/features/ads/presentation/interstitial_ad_manager.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_cubit.dart';
 import 'package:read_ru/features/library/presentation/cubit/library_list_state.dart';
@@ -221,6 +222,10 @@ class _DocumentCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: () async {
         final cubit = context.read<LibraryListCubit>();
+        // "Before read" interstitial - no-ops instantly if nothing's
+        // loaded yet, so this never delays opening the book.
+        await getIt<InterstitialAdManager>().showIfReady();
+        if (!context.mounted) return;
         await Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => DocumentViewerScreen(document: document)),
         );
