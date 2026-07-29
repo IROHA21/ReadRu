@@ -21,6 +21,7 @@ import 'package:read_ru/features/settings/presentation/cubit/settings_cubit.dart
 import 'package:read_ru/features/settings/presentation/screens/settings_screen.dart';
 import 'package:read_ru/features/word_bucket/domain/entities/word_bucket_entry.dart';
 import 'package:read_ru/features/word_bucket/domain/repositories/word_bucket_repository.dart';
+import 'package:read_ru/l10n/generated/app_localizations.dart';
 
 // TRANSLATION - keyed by "source>target:word" so the same raw word doesn't
 // collide across different book/spoken-language pairs.
@@ -32,11 +33,12 @@ String _stripPunctuation(String word) {
   return word.replaceAll(RegExp(r'^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$', unicode: true), '');
 }
 
-// TEMPORARY DEBUG SWITCH - set back to false once ML Kit is confirmed
-// working. While true, a failed/empty/unchanged on-device result shows
-// directly as "(ml kit failed)" instead of silently falling back to
-// Yandex, so ML Kit's own behavior is visible instead of being masked.
-const bool _debugDisableYandexFallback = true;
+// TEMPORARY DEBUG SWITCH - while true, a failed/empty/unchanged on-device
+// result shows directly as "(ml kit failed)" instead of silently falling
+// back to Yandex, so ML Kit's own behavior is visible instead of being
+// masked. Left false now that ML Kit has been confirmed working; flip back
+// to true only to isolate ML Kit again for debugging.
+const bool _debugDisableYandexFallback = false;
 
 // ML Kit on-device translation first (silent, offline, free); Yandex is a
 // silent fallback for whatever ML Kit doesn't handle well - a thrown error
@@ -84,6 +86,16 @@ Future<String?> _translateOnDevice(String word, TranslateLanguage source, Transl
   } finally {
     unawaited(translator.close());
   }
+}
+
+// The stored/cached translation value is always the canonical English
+// sentinel (translationFailedMarker/translationUnsupportedMarker), so it
+// stays comparable and correctly persisted regardless of locale - this
+// only swaps in the localized text at the point of display.
+String _displayTranslation(String raw, AppLocalizations l10n) {
+  if (raw == translationFailedMarker) return l10n.translationFailed;
+  if (raw == translationUnsupportedMarker) return l10n.translationUnsupported;
+  return raw;
 }
 
 Future<String> _translateWithYandex(String word, String sourceCode, String targetCode) async {
@@ -189,6 +201,7 @@ class _ReaderContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsCubit>().state;
 
     return BlocListener<SettingsCubit, ReaderSettings>(
@@ -226,7 +239,16 @@ class _ReaderContent extends StatelessWidget {
             await context.read<ReaderCubit>().saveProgress();
             if (context.mounted) Navigator.of(context).pop();
           },
-          child: Column(
+          // Pinned to LTR regardless of the app's interface language - the
+          // reading area (word Wrap, page prev/counter/next bar) reflects
+          // the book's own layout, not the app UI's locale. Reading
+          // direction for the book itself is controlled by the explicit
+          // "Page turn direction" setting, not by ambient Directionality;
+          // letting Arabic-as-app-language flip this would reverse page
+          // navigation and word order for every book, RTL script or not.
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
             children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -235,7 +257,7 @@ class _ReaderContent extends StatelessWidget {
                   if (chapters.isNotEmpty)
                     IconButton(
                       icon: Icon(Icons.menu_book, color: colors.textPrimary),
-                      tooltip: 'Chapters',
+                      tooltip: l10n.chaptersTooltip,
                       onPressed: loaded == null
                           ? null
                           : () => showModalBottomSheet(
@@ -265,7 +287,7 @@ class _ReaderContent extends StatelessWidget {
                   ),
                   IconButton(
                     icon: Icon(Icons.settings, color: colors.textPrimary),
-                    tooltip: 'Reading settings',
+                    tooltip: l10n.readingSettingsTooltip,
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -364,8 +386,8 @@ class _ReaderContent extends StatelessWidget {
                     ),
                     Text(
                       loaded == null
-                          ? '- / -'
-                          : '${loaded.currentPageIndex + 1} / ${loaded.pages.length}',
+                          ? l10n.pageCounterUnknown
+                          : l10n.pageCounter(loaded.currentPageIndex + 1, loaded.pages.length),
                       style: TextStyle(color: colors.textSecondary),
                     ),
                     IconButton(
@@ -380,6 +402,7 @@ class _ReaderContent extends StatelessWidget {
                 ),
               ),
             ],
+          ),
           ),
         );
       },
@@ -570,11 +593,29 @@ class _WordWidgetState extends State<_WordWidget> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final Color? background = widget.isSelected
         ? colors.accent.withValues(alpha: 0.35)
         : (widget.isTapped && widget.highlightEnabled
             ? widget.highlightColor.withValues(alpha: 0.55)
             : null);
+
+    // Translations must never be wider than their word - pagination only
+    // ever budgets room for the word itself (see measured_pagination.dart),
+    // so a wider translation would push the rest of the Wrap onto later
+    // rows than what was paginated for, and the page's fixed-height
+    // ClipRect would clip the overflow instead of showing it. Capping the
+    // translation to the word's measured width and letting FittedBox
+    // shrink it to fit keeps every word's footprint exactly what
+    // pagination expected.
+    final wordPainter = TextPainter(
+      text: TextSpan(text: widget.word, style: readerTextStyle(widget.fontSize, font: widget.font)),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final wordWidth = wordPainter.width;
+    wordPainter.dispose();
+
     return GestureDetector(
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
@@ -592,9 +633,17 @@ class _WordWidgetState extends State<_WordWidget> {
             maintainSize: true,
             maintainAnimation: true,
             maintainState: true,
-            child: Text(
-              _loading ? '...' : (_translation ?? ''),
-              style: readerTextStyle(widget.translationFontSize, font: widget.font, color: widget.translationColor),
+            child: SizedBox(
+              width: wordWidth,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _loading ? '...' : _displayTranslation(_translation ?? '', l10n),
+                  maxLines: 1,
+                  style: readerTextStyle(widget.translationFontSize, font: widget.font, color: widget.translationColor),
+                ),
+              ),
             ),
           ),
         ],
@@ -628,31 +677,40 @@ class _ChapterListSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-            child: Text(
-              'Chapters',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: colors.textPrimary),
-            ),
-          ),
-          for (final chapter in chapters)
-            ListTile(
-              title: Text(chapter.title, style: TextStyle(color: colors.textPrimary)),
-              trailing: Text(
-                'p. ${_pageIndexFor(chapter.wordIndex) + 1}',
-                style: TextStyle(color: colors.textSecondary),
+    final l10n = AppLocalizations.of(context)!;
+    // Shown via showModalBottomSheet, which pushes onto the app's root
+    // Navigator/Overlay rather than nesting under _ReaderContent's own
+    // Directionality override - pin it separately so chapter titles and
+    // page numbers (book content, not app chrome) don't flip under an
+    // Arabic app language either.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: Text(
+                l10n.chapters,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: colors.textPrimary),
               ),
-              onTap: () {
-                onSelected(chapter);
-                Navigator.of(context).pop();
-              },
             ),
-        ],
+            for (final chapter in chapters)
+              ListTile(
+                title: Text(chapter.title, style: TextStyle(color: colors.textPrimary)),
+                trailing: Text(
+                  l10n.chapterPageLabel(_pageIndexFor(chapter.wordIndex) + 1),
+                  style: TextStyle(color: colors.textSecondary),
+                ),
+                onTap: () {
+                  onSelected(chapter);
+                  Navigator.of(context).pop();
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -672,6 +730,7 @@ class _SelectionToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<ReaderCubit>();
     final count = cubit.selectedWordCount;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       decoration: BoxDecoration(
@@ -683,12 +742,12 @@ class _SelectionToolbar extends StatelessWidget {
         children: [
           IconButton(
             icon: Icon(Icons.close, color: colors.textSecondary),
-            tooltip: 'Cancel selection',
+            tooltip: l10n.cancelSelectionTooltip,
             onPressed: cubit.clearSelection,
           ),
           Expanded(
             child: Text(
-              count == 1 ? '1 word selected' : '$count words selected',
+              l10n.wordsSelected(count),
               style: TextStyle(color: colors.textSecondary),
             ),
           ),
@@ -709,7 +768,7 @@ class _SelectionToolbar extends StatelessWidget {
                     );
                   },
             icon: Icon(Icons.translate, color: colors.accent),
-            label: Text('Translate', style: TextStyle(color: colors.accent)),
+            label: Text(l10n.translateButton, style: TextStyle(color: colors.accent)),
           ),
         ],
       ),
@@ -754,6 +813,7 @@ class _PhraseTranslationSheetState extends State<_PhraseTranslationSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final translation = _translation;
     final canSave = translation != null && isUsableTranslation(translation) && !_saved;
 
@@ -774,14 +834,14 @@ class _PhraseTranslationSheetState extends State<_PhraseTranslationSheet> {
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Center(child: CircularProgressIndicator()),
                   )
-                : Text(translation, style: TextStyle(fontSize: 16, color: colors.accent)),
+                : Text(_displayTranslation(translation, l10n), style: TextStyle(fontSize: 16, color: colors.accent)),
             const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
+                    child: Text(l10n.close),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -793,7 +853,7 @@ class _PhraseTranslationSheetState extends State<_PhraseTranslationSheet> {
                             widget.onSaved(widget.phrase, translation);
                             setState(() => _saved = true);
                           },
-                    child: Text(_saved ? 'Saved' : 'Save to Word Bucket'),
+                    child: Text(_saved ? l10n.saved : l10n.saveToWordBucket),
                   ),
                 ),
               ],

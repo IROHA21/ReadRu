@@ -14,5 +14,6 @@ class LibraryListLoaded extends LibraryListState{
 
 class LibraryListError extends LibraryListState{
   final String message;
-  LibraryListError(this.message);
+  final String? duplicateTitle;
+  LibraryListError(this.message, {this.duplicateTitle});
 }

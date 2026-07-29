@@ -7,6 +7,7 @@ import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/features/library/domain/entities/document.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 import 'package:read_ru/features/onboarding/domain/supported_languages.dart';
+import 'package:read_ru/l10n/generated/app_localizations.dart';
 
 // Best-effort ISO 639-1 (or the first two letters of whatever the format
 // gave us) -> flag emoji. Falls back to a globe when the code isn't one we
@@ -69,17 +70,18 @@ class _DocumentInfoScreenState extends State<DocumentInfoScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final document = _document;
     final language = document.language;
     final supported = translateLanguageFromCode(language);
 
     final String languageValue;
     if (language == null) {
-      languageValue = 'Not set - tap to choose';
+      languageValue = l10n.languageNotSet;
     } else if (supported != null) {
       languageValue = '${_flagFor(language)} ${translateLanguageName(supported)}';
     } else {
-      languageValue = '${_flagFor(language)} $language (not supported for translation)';
+      languageValue = l10n.languageNotSupported(_flagFor(language), language);
     }
 
     return Scaffold(
@@ -88,7 +90,7 @@ class _DocumentInfoScreenState extends State<DocumentInfoScreen> {
         backgroundColor: colors.background,
         foregroundColor: colors.textPrimary,
         elevation: 0,
-        title: const Text('Book Info'),
+        title: Text(l10n.bookInfoTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -108,36 +110,39 @@ class _DocumentInfoScreenState extends State<DocumentInfoScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _InfoRow(label: 'Title', value: document.title, colors: colors),
-          if (document.author != null) _InfoRow(label: 'Author', value: document.author!, colors: colors),
+          _InfoRow(label: l10n.title, value: document.title, colors: colors),
+          if (document.author != null) _InfoRow(label: l10n.author, value: document.author!, colors: colors),
           InkWell(
             onTap: _pickLanguage,
             child: _InfoRow(
-              label: 'Language of the book',
+              label: l10n.languageOfBookLabel,
               value: languageValue,
               colors: colors,
-              trailing: Icon(Icons.chevron_right, color: colors.textSecondary),
+              trailing: Icon(
+                Directionality.of(context) == TextDirection.rtl ? Icons.chevron_left : Icons.chevron_right,
+                color: colors.textSecondary,
+              ),
             ),
           ),
-          _InfoRow(label: 'Format', value: document.format.name.toUpperCase(), colors: colors),
+          _InfoRow(label: l10n.format, value: document.format.name.toUpperCase(), colors: colors),
           FutureBuilder<int>(
             future: File(document.filepath).length(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const SizedBox.shrink();
-              return _InfoRow(label: 'File size', value: _formatBytes(snapshot.data!), colors: colors);
+              return _InfoRow(label: l10n.fileSize, value: _formatBytes(snapshot.data!), colors: colors);
             },
           ),
           _InfoRow(
-            label: 'Progress',
+            label: l10n.progress,
             value: '${(document.progress * 100).round()}%',
             colors: colors,
           ),
           if (document.chapters.isNotEmpty)
-            _InfoRow(label: 'Chapters', value: '${document.chapters.length}', colors: colors),
+            _InfoRow(label: l10n.chapters, value: '${document.chapters.length}', colors: colors),
           if (document.description != null) ...[
             const SizedBox(height: 20),
             Text(
-              'Description',
+              l10n.description,
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary),
             ),
             const SizedBox(height: 6),
@@ -158,13 +163,13 @@ class _LanguagePickerSheet extends StatefulWidget {
 
 class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
   String _query = '';
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final languages = allSupportedLanguages
-        .where((l) => translateLanguageName(l).toLowerCase().contains(_query.toLowerCase()))
-        .toList();
+    final l10n = AppLocalizations.of(context)!;
+    final languages = visibleLanguages(all: allSupportedLanguages, query: _query, expanded: _expanded);
 
     return SafeArea(
       child: SizedBox(
@@ -175,7 +180,7 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Text(
-                'Language of the book',
+                l10n.languageOfBookLabel,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: colors.textPrimary),
               ),
             ),
@@ -185,7 +190,7 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
                 autofocus: true,
                 onChanged: (value) => setState(() => _query = value),
                 decoration: InputDecoration(
-                  hintText: 'Search languages',
+                  hintText: l10n.searchLanguages,
                   prefixIcon: const Icon(Icons.search),
                   isDense: true,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -200,6 +205,12 @@ class _LanguagePickerSheetState extends State<_LanguagePickerSheet> {
                     ListTile(
                       title: Text(translateLanguageName(language), style: TextStyle(color: colors.textPrimary)),
                       onTap: () => Navigator.of(context).pop(language),
+                    ),
+                  if (_query.isEmpty && !_expanded && languages.length < allSupportedLanguages.length)
+                    ListTile(
+                      leading: Icon(Icons.expand_more, color: colors.accent),
+                      title: Text(l10n.showMoreLanguages, style: TextStyle(color: colors.accent)),
+                      onTap: () => setState(() => _expanded = true),
                     ),
                 ],
               ),

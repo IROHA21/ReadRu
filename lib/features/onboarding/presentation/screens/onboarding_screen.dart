@@ -6,6 +6,8 @@ import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/features/onboarding/domain/onboarding_settings.dart';
 import 'package:read_ru/features/onboarding/domain/supported_languages.dart';
 import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
+import 'package:read_ru/features/onboarding/presentation/widgets/language_pack_manager.dart';
+import 'package:read_ru/l10n/generated/app_localizations.dart';
 
 /// The 3-screen first-run flow: spoken language, book/learning language(s),
 /// then permission to download the on-device translation models for them.
@@ -18,8 +20,14 @@ class OnboardingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => getIt<OnboardingCubit>(),
+    // .value, not create: OnboardingCubit is a shared app-wide singleton
+    // (main.dart's MaterialApp.locale is driven by this same instance) -
+    // create: would make this provider own it and close() it the moment
+    // this screen unmounts (right when onboarding completes and main.dart
+    // swaps home: to LibraryListScreen), permanently killing the cubit
+    // every language-setting screen after onboarding depends on.
+    return BlocProvider.value(
+      value: getIt<OnboardingCubit>(),
       child: _OnboardingFlow(onComplete: onComplete),
     );
   }
@@ -146,11 +154,12 @@ class _SpokenLanguageStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return BlocBuilder<OnboardingCubit, OnboardingSettings>(
       builder: (context, settings) {
         return _StepScaffold(
-          title: 'What language do you speak?',
-          subtitle: "We'll translate books into this language.",
+          title: l10n.spokenLanguageStepTitle,
+          subtitle: l10n.spokenLanguageStepSubtitle,
           body: RadioGroup<TranslateLanguage>(
             groupValue: settings.spokenLanguage,
             onChanged: (value) {
@@ -171,7 +180,7 @@ class _SpokenLanguageStep extends StatelessWidget {
           ),
           bottomBar: FilledButton(
             onPressed: settings.spokenLanguage == null ? null : onNext,
-            child: const Text('Continue'),
+            child: Text(l10n.continueButton),
           ),
         );
       },
@@ -192,6 +201,7 @@ class _BookLanguageStep extends StatefulWidget {
 class _BookLanguageStepState extends State<_BookLanguageStep> {
   final _searchController = TextEditingController();
   String _query = '';
+  bool _expanded = false;
 
   @override
   void dispose() {
@@ -202,15 +212,14 @@ class _BookLanguageStepState extends State<_BookLanguageStep> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final languages = allSupportedLanguages
-        .where((l) => translateLanguageName(l).toLowerCase().contains(_query.toLowerCase()))
-        .toList();
+    final l10n = AppLocalizations.of(context)!;
+    final languages = visibleLanguages(all: allSupportedLanguages, query: _query, expanded: _expanded);
 
     return BlocBuilder<OnboardingCubit, OnboardingSettings>(
       builder: (context, settings) {
         return _StepScaffold(
-          title: 'What languages are your books in?',
-          subtitle: 'Pick every language you read in - you can change this per book later.',
+          title: l10n.bookLanguageStepTitle,
+          subtitle: l10n.bookLanguageStepSubtitle,
           body: Column(
             children: [
               Padding(
@@ -219,7 +228,7 @@ class _BookLanguageStepState extends State<_BookLanguageStep> {
                   controller: _searchController,
                   onChanged: (value) => setState(() => _query = value),
                   decoration: InputDecoration(
-                    hintText: 'Search languages',
+                    hintText: l10n.searchLanguages,
                     prefixIcon: const Icon(Icons.search),
                     isDense: true,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -238,6 +247,13 @@ class _BookLanguageStepState extends State<_BookLanguageStep> {
                         activeColor: colors.accent,
                         onChanged: (_) => context.read<OnboardingCubit>().toggleBookLanguage(language),
                       ),
+                    if (_query.isEmpty && !_expanded && languages.length < allSupportedLanguages.length)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.expand_more, color: colors.accent),
+                        title: Text(l10n.showMoreLanguages, style: TextStyle(color: colors.accent)),
+                        onTap: () => setState(() => _expanded = true),
+                      ),
                   ],
                 ),
               ),
@@ -245,12 +261,12 @@ class _BookLanguageStepState extends State<_BookLanguageStep> {
           ),
           bottomBar: Row(
             children: [
-              OutlinedButton(onPressed: widget.onBack, child: const Text('Back')),
+              OutlinedButton(onPressed: widget.onBack, child: Text(l10n.back)),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
                   onPressed: settings.bookLanguages.isEmpty ? null : widget.onNext,
-                  child: const Text('Continue'),
+                  child: Text(l10n.continueButton),
                 ),
               ),
             ],
@@ -260,15 +276,6 @@ class _BookLanguageStepState extends State<_BookLanguageStep> {
     );
   }
 }
-
-enum _DownloadState { pending, downloading, done, failed }
-
-// ML Kit's model manager doesn't report a real size or byte-level progress
-// for a download - this is Google's own published ballpark for an
-// on-device translation language model, not something we can query per
-// language. Shown as an estimate everywhere, never as an exact figure.
-// https://developers.google.com/ml-kit/language/translation
-const int _estimatedModelSizeMb = 30;
 
 class _DownloadModelsStep extends StatefulWidget {
   final VoidCallback onDone;
@@ -281,8 +288,7 @@ class _DownloadModelsStep extends StatefulWidget {
 }
 
 class _DownloadModelsStepState extends State<_DownloadModelsStep> {
-  final _modelManager = OnDeviceTranslatorModelManager();
-  final Map<TranslateLanguage, _DownloadState> _status = {};
+  final _managerKey = GlobalKey<LanguagePackManagerState>();
   bool _downloading = false;
 
   List<TranslateLanguage> _languagesFor(OnboardingSettings settings) {
@@ -293,111 +299,30 @@ class _DownloadModelsStepState extends State<_DownloadModelsStep> {
     return languages.toList();
   }
 
-  Future<void> _downloadOne(TranslateLanguage language) async {
-    setState(() => _status[language] = _DownloadState.downloading);
-    try {
-      await _modelManager.downloadModel(language.bcpCode, isWifiRequired: false);
-      setState(() => _status[language] = _DownloadState.done);
-    } catch (_) {
-      setState(() => _status[language] = _DownloadState.failed);
-    }
-  }
-
-  Future<void> _downloadAll(List<TranslateLanguage> languages) async {
-    setState(() => _downloading = true);
-    for (final language in languages) {
-      await _downloadOne(language);
-    }
-    setState(() => _downloading = false);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return BlocBuilder<OnboardingCubit, OnboardingSettings>(
       builder: (context, settings) {
         final languages = _languagesFor(settings);
-        final doneCount = languages.where((l) => _status[l] == _DownloadState.done).length;
-        final totalMb = languages.length * _estimatedModelSizeMb;
 
         return _StepScaffold(
-          title: 'Download offline translation',
-          subtitle:
-              'Download these language packs so translation works fully offline afterward. You can skip this and do it later in Settings.',
-          body: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$doneCount of ${languages.length} downloaded · ~$totalMb MB total',
-                      style: TextStyle(fontSize: 13, color: colors.textSecondary),
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: languages.isEmpty ? 0 : doneCount / languages.length,
-                        minHeight: 6,
-                        backgroundColor: colors.progressTrack,
-                        valueColor: AlwaysStoppedAnimation(colors.accent),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: [
-                    for (final language in languages)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        onTap: _status[language] == _DownloadState.failed
-                            ? () => _downloadOne(language)
-                            : null,
-                        title: Text(translateLanguageName(language), style: TextStyle(color: colors.textPrimary)),
-                        subtitle: switch (_status[language] ?? _DownloadState.pending) {
-                          _DownloadState.downloading => Padding(
-                              padding: const EdgeInsets.only(top: 6, bottom: 2),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  minHeight: 4,
-                                  backgroundColor: colors.progressTrack,
-                                  valueColor: AlwaysStoppedAnimation(colors.accent),
-                                ),
-                              ),
-                            ),
-                          _DownloadState.done => Text('Downloaded', style: TextStyle(color: colors.textSecondary)),
-                          _DownloadState.failed =>
-                            Text('Download failed - tap to retry', style: TextStyle(color: Colors.red.shade400)),
-                          _DownloadState.pending =>
-                            Text('~$_estimatedModelSizeMb MB', style: TextStyle(color: colors.textSecondary)),
-                        },
-                        trailing: switch (_status[language]) {
-                          _DownloadState.done => Icon(Icons.check_circle, color: colors.accent),
-                          _DownloadState.failed => const Icon(Icons.error_outline, color: Colors.red),
-                          _ => null,
-                        },
-                      ),
-                  ],
-                ),
-              ),
-            ],
+          title: l10n.downloadStepTitle,
+          subtitle: l10n.downloadStepSubtitle,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: LanguagePackManager(key: _managerKey, languages: languages),
           ),
           bottomBar: Row(
             children: [
-              OutlinedButton(onPressed: widget.onBack, child: const Text('Back')),
+              OutlinedButton(onPressed: widget.onBack, child: Text(l10n.back)),
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton(
                   onPressed: _downloading
                       ? null
                       : () => context.read<OnboardingCubit>().completeOnboarding().then((_) => widget.onDone()),
-                  child: const Text('Skip for now'),
+                  child: Text(l10n.skipForNow),
                 ),
               ),
               const SizedBox(width: 12),
@@ -406,12 +331,14 @@ class _DownloadModelsStepState extends State<_DownloadModelsStep> {
                   onPressed: _downloading
                       ? null
                       : () async {
-                          await _downloadAll(languages);
+                          setState(() => _downloading = true);
+                          await _managerKey.currentState?.downloadMissing();
+                          setState(() => _downloading = false);
                           if (!context.mounted) return;
                           await context.read<OnboardingCubit>().completeOnboarding();
                           widget.onDone();
                         },
-                  child: Text(_downloading ? 'Downloading...' : 'Download'),
+                  child: Text(_downloading ? l10n.downloading : l10n.download),
                 ),
               ),
             ],

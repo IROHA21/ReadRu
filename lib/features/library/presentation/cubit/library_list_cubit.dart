@@ -21,18 +21,21 @@ class LibraryListCubit extends Cubit<LibraryListState> {
     }
   }
 
-  Future<void> addDocument() async {
+  // Returns the added document (for the screen to check its language
+  // pack against) - null if the picker was cancelled or it failed.
+  Future<Document?> addDocument() async {
     try {
       final document = await
       repository.pickDocument();
       if (document == null) {
-        return;
+        return null;
       }
       await loadLibrary();
+      return document;
     } catch (e) {
       emit(LibraryListError(e.toString()));
       await loadLibrary();
-
+      return null;
     }
   }
 
@@ -56,7 +59,7 @@ class LibraryListCubit extends Cubit<LibraryListState> {
       final library = await repository.getLibrary();
       final alreadyExists = library.any((doc) => doc.id != document.id && doc.title == trimmed);
       if (alreadyExists) {
-        emit(LibraryListError('A book named "$trimmed" already exists'));
+        emit(LibraryListError('A book named "$trimmed" already exists', duplicateTitle: trimmed));
         await loadLibrary();
         return;
       }

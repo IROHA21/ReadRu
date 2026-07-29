@@ -6,6 +6,7 @@ import 'package:read_ru/core/widgets/page_turn_loader.dart';
 import 'package:read_ru/features/word_bucket/domain/entities/word_bucket_entry.dart';
 import 'package:read_ru/features/word_bucket/presentation/cubit/word_bucket_cubit.dart';
 import 'package:read_ru/features/word_bucket/presentation/cubit/word_bucket_state.dart';
+import 'package:read_ru/l10n/generated/app_localizations.dart';
 
 class WordBucketScreen extends StatefulWidget {
   const WordBucketScreen({super.key});
@@ -20,6 +21,7 @@ class _WordBucketScreenState extends State<WordBucketScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return BlocProvider(
       create: (_) => getIt<WordBucketCubit>()..loadEntries(),
@@ -29,11 +31,11 @@ class _WordBucketScreenState extends State<WordBucketScreen> {
           backgroundColor: colors.background,
           foregroundColor: colors.textPrimary,
           elevation: 0,
-          title: const Text('Word Bucket'),
+          title: Text(l10n.wordBucketTitle),
           actions: [
             IconButton(
               icon: Icon(_groupByBook ? Icons.view_list : Icons.menu_book),
-              tooltip: _groupByBook ? 'Show all words' : 'Group by book',
+              tooltip: _groupByBook ? l10n.showAllWords : l10n.groupByBook,
               onPressed: () => setState(() => _groupByBook = !_groupByBook),
             ),
           ],
@@ -73,7 +75,7 @@ class _EmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Text(
-          'Tap words while reading to save their translations here.',
+          AppLocalizations.of(context)!.wordBucketEmptyState,
           textAlign: TextAlign.center,
           style: TextStyle(color: colors.textSecondary),
         ),
@@ -167,7 +169,15 @@ class _EntryTile extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary),
               ),
             ),
-            Icon(Icons.arrow_forward, size: 16, color: colors.textSecondary),
+            // Row itself mirrors word/translation order automatically under
+            // RTL, but a plain Icon doesn't - without this the arrow would
+            // keep pointing right even though it now sits between a
+            // right-hand word and a left-hand translation.
+            Icon(
+              Directionality.of(context) == TextDirection.rtl ? Icons.arrow_back : Icons.arrow_forward,
+              size: 16,
+              color: colors.textSecondary,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(

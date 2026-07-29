@@ -21,6 +21,7 @@ const List<TranslateLanguage> popularSpokenLanguages = [
   TranslateLanguage.portuguese,
   TranslateLanguage.russian,
   TranslateLanguage.chinese,
+  TranslateLanguage.arabic,
 ];
 
 // The book/learning-language screen offers the full on-device-translatable
@@ -40,4 +41,37 @@ TranslateLanguage? translateLanguageFromCode(String? bcpTag) {
   if (bcpTag == null || bcpTag.trim().isEmpty) return null;
   final primary = bcpTag.trim().toLowerCase().split(RegExp(r'[-_]')).first;
   return BCP47Code.fromRawValue(primary);
+}
+
+// PROVISIONAL, same caveat as popularSpokenLanguages above - used to cap
+// the full 59-language browse lists (goal-language picker, offline packs,
+// book-language search) to a short default instead of rendering, sorting,
+// and (for the offline-pack list) status-checking all 59 up front.
+const List<TranslateLanguage> topLanguages = [
+  TranslateLanguage.english,
+  TranslateLanguage.spanish,
+  TranslateLanguage.french,
+  TranslateLanguage.german,
+  TranslateLanguage.portuguese,
+  TranslateLanguage.russian,
+  TranslateLanguage.chinese,
+  TranslateLanguage.japanese,
+  TranslateLanguage.italian,
+  TranslateLanguage.arabic,
+];
+
+/// Caps a searchable language-browse list to [topLanguages] until the user
+/// either searches (any query bypasses the cap and searches the full list)
+/// or explicitly asks to see more.
+List<TranslateLanguage> visibleLanguages({
+  required List<TranslateLanguage> all,
+  required String query,
+  required bool expanded,
+}) {
+  final trimmed = query.trim().toLowerCase();
+  final base = trimmed.isEmpty && !expanded
+      ? all.where(topLanguages.contains).toList()
+      : all;
+  if (trimmed.isEmpty) return base;
+  return base.where((l) => translateLanguageName(l).toLowerCase().contains(trimmed)).toList();
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:read_ru/core/config/app_colors.dart';
 import 'package:read_ru/core/di/injection_container.dart';
 import 'package:read_ru/core/widgets/page_turn_loader.dart';
@@ -9,8 +10,12 @@ import 'package:read_ru/features/library/presentation/cubit/library_list_cubit.d
 import 'package:read_ru/features/library/presentation/cubit/library_list_state.dart';
 import 'package:read_ru/features/library/presentation/screens/document_info_screen.dart';
 import 'package:read_ru/features/library/presentation/screens/document_viewer_screen.dart';
+import 'package:read_ru/features/onboarding/domain/supported_languages.dart';
+import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
+import 'package:read_ru/features/onboarding/presentation/screens/language_pack_download_screen.dart';
 import 'package:read_ru/features/settings/presentation/screens/settings_screen.dart';
 import 'package:read_ru/features/word_bucket/presentation/screens/word_bucket_screen.dart';
+import 'package:read_ru/l10n/generated/app_localizations.dart';
 
 class LibraryListScreen extends StatelessWidget {
   const LibraryListScreen({super.key});
@@ -30,6 +35,7 @@ class _LibraryListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: colors.background,
       body: SafeArea(
@@ -42,7 +48,7 @@ class _LibraryListView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Library',
+                    l10n.libraryTitle,
                     style: TextStyle(
                       fontFamily: 'serif',
                       fontSize: 28,
@@ -54,7 +60,7 @@ class _LibraryListView extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: Icon(Icons.translate, color: colors.textPrimary),
-                        tooltip: 'Word Bucket',
+                        tooltip: l10n.wordBucketTooltip,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const WordBucketScreen()),
@@ -63,7 +69,7 @@ class _LibraryListView extends StatelessWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.settings, color: colors.textPrimary),
-                        tooltip: 'Settings',
+                        tooltip: l10n.settingsTitle,
                         onPressed: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -79,8 +85,12 @@ class _LibraryListView extends StatelessWidget {
               child: BlocConsumer<LibraryListCubit, LibraryListState>(
                 listener: (context, state) {
                   if (state is LibraryListError) {
+                    final duplicateTitle = state.duplicateTitle;
+                    final message = duplicateTitle != null
+                        ? AppLocalizations.of(context)!.bookAlreadyExists(duplicateTitle)
+                        : state.message;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.message)),
+                      SnackBar(content: Text(message)),
                     );
                   }
                 },
@@ -98,10 +108,57 @@ class _LibraryListView extends StatelessWidget {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: colors.accent,
-        onPressed: () => context.read<LibraryListCubit>().addDocument(),
+        onPressed: () async {
+          final cubit = context.read<LibraryListCubit>();
+          final document = await cubit.addDocument();
+          if (document == null || !context.mounted) return;
+          await _checkLanguagePack(context, document);
+        },
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
+  }
+
+  // A book's language pack (and the user's own spoken-language pack, since
+  // translation needs both ends downloaded) might not be on-device yet -
+  // offer to fetch it right away instead of leaving tap-to-translate
+  // silently falling back to Yandex (or failing outright) until noticed.
+  Future<void> _checkLanguagePack(BuildContext context, Document document) async {
+    final bookLanguage = translateLanguageFromCode(document.language);
+    if (bookLanguage == null) return;
+
+    final spokenLanguage = getIt<OnboardingCubit>().state.spokenLanguage;
+    final modelManager = OnDeviceTranslatorModelManager();
+
+    final missing = <TranslateLanguage>[];
+    if (!await modelManager.isModelDownloaded(bookLanguage.bcpCode)) missing.add(bookLanguage);
+    if (spokenLanguage != null &&
+        spokenLanguage != bookLanguage &&
+        !await modelManager.isModelDownloaded(spokenLanguage.bcpCode)) {
+      missing.add(spokenLanguage);
+    }
+    if (missing.isEmpty || !context.mounted) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    final shouldDownload = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.downloadLanguagePackTitle),
+        content: Text(
+          l10n.downloadLanguagePackContent(document.title, translateLanguageName(bookLanguage)),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(l10n.later)),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(l10n.download)),
+        ],
+      ),
+    );
+
+    if (shouldDownload == true && context.mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => LanguagePackDownloadScreen(languages: missing)),
+      );
+    }
   }
 }
 
@@ -113,6 +170,7 @@ class _LibraryListContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       children: [
@@ -142,7 +200,7 @@ class _LibraryListContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              'Add your first document to begin reading.',
+              l10n.libraryEmptyState,
               style: TextStyle(color: colors.textSecondary),
             ),
           ),
@@ -241,20 +299,23 @@ class _DocumentCard extends StatelessWidget {
                     _confirmDelete(context, document);
                 }
               },
-              itemBuilder: (context) => const [
-                PopupMenuItem(
-                  value: _DocumentAction.info,
-                  child: Text('Info'),
-                ),
-                PopupMenuItem(
-                  value: _DocumentAction.rename,
-                  child: Text('Rename'),
-                ),
-                PopupMenuItem(
-                  value: _DocumentAction.delete,
-                  child: Text('Delete'),
-                ),
-              ],
+              itemBuilder: (context) {
+                final l10n = AppLocalizations.of(context)!;
+                return [
+                  PopupMenuItem(
+                    value: _DocumentAction.info,
+                    child: Text(l10n.infoMenuItem),
+                  ),
+                  PopupMenuItem(
+                    value: _DocumentAction.rename,
+                    child: Text(l10n.renameMenuItem),
+                  ),
+                  PopupMenuItem(
+                    value: _DocumentAction.delete,
+                    child: Text(l10n.delete),
+                  ),
+                ];
+              },
             ),
           ],
         ),
@@ -264,25 +325,26 @@ class _DocumentCard extends StatelessWidget {
 
   Future<void> _renameDocument(BuildContext context, Document document) async {
     final cubit = context.read<LibraryListCubit>();
+    final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: document.title);
     final newTitle = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Rename book'),
+        title: Text(l10n.renameBookTitle),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Title'),
+          decoration: InputDecoration(labelText: l10n.title),
           onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-            child: const Text('Save'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -295,19 +357,20 @@ class _DocumentCard extends StatelessWidget {
 
   Future<void> _confirmDelete(BuildContext context, Document document) async {
     final cubit = context.read<LibraryListCubit>();
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete document?'),
-        content: Text('"${document.title}" will be removed from your library.'),
+        title: Text(l10n.deleteDocumentTitle),
+        content: Text(l10n.deleteDocumentContent(document.title)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),

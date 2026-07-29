@@ -35,6 +35,29 @@ int _countParagraphs(String text) =>
 
 T? _firstOrNull<T>(Iterable<T> iterable) => iterable.isEmpty ? null : iterable.first;
 
+// FB2 paragraph-level text isn't only <p> - poetry lines live in <v>
+// (never <p>), plus <subtitle>, <text-author> (spoken/sung attribution),
+// and <code>. Missing these used to mean e.g. a poem embedded in a novel
+// silently vanished from the extracted text. Walks [root] in document
+// order, not descending into a matched element's own children since none
+// of these tags nest further in FB2.
+const _fb2ParagraphTags = {'p', 'v', 'subtitle', 'text-author', 'code'};
+
+List<XmlElement> _fb2ParagraphElements(XmlElement root) {
+  final result = <XmlElement>[];
+  void visit(XmlElement element) {
+    if (_fb2ParagraphTags.contains(element.name.local)) {
+      result.add(element);
+      return;
+    }
+    for (final child in element.childElements) {
+      visit(child);
+    }
+  }
+  visit(root);
+  return result;
+}
+
 // Treats a blank/whitespace-only string the same as absent - metadata
 // fields are often present in the file but empty.
 String? _orNull(String? value) {
@@ -86,12 +109,38 @@ class LibraryLocalDataSource {
     final bytes = await File(filePath).readAsBytes();
     final book = await EpubReader.readBook(bytes);
 
-    final buffer = StringBuffer();
-    for (final chapter in book.Chapters ?? []) {
-      buffer.writeln(chapter.HtmlContent ?? '');
-    }
+    final chapterHtml = _epubChapterHtml(book);
 
-    return htmlToPlainText(buffer.toString());
+    // Self-calibrating fallback: the chapter walk has better fidelity and
+    // ordering when it works, but if it captured less than half of what's
+    // actually sitting in the epub's HTML resources - some TOC/spine shape
+    // epubx's chapter builder doesn't handle, the same family of bug as
+    // the SubChapters case above but for whatever we haven't seen yet -
+    // fall back to every HTML file in the epub instead of silently
+    // returning a near-empty book. Order isn't guaranteed to match spine
+    // order here, but a complete book in a slightly odd order beats a
+    // 3-page book.
+    final allHtml = book.Content?.Html?.values.map((f) => f.Content ?? '').join('\n') ?? '';
+    final raw = chapterHtml.length < allHtml.length * 0.5 ? allHtml : chapterHtml;
+
+    return htmlToPlainText(raw);
+  }
+
+  // Recurses into SubChapters - epubx mirrors the TOC's nesting, so a book
+  // with a "Part I / Chapter 1..6" structure has the actual prose sitting
+  // under SubChapters, not in book.Chapters directly.
+  String _epubChapterHtml(EpubBook book) {
+    final buffer = StringBuffer();
+    void visit(EpubChapter chapter) {
+      buffer.writeln(chapter.HtmlContent ?? '');
+      for (final sub in chapter.SubChapters ?? const <EpubChapter>[]) {
+        visit(sub);
+      }
+    }
+    for (final chapter in book.Chapters ?? const <EpubChapter>[]) {
+      visit(chapter);
+    }
+    return buffer.toString();
   }
 
   // epub metadata: title/author/description/language (Dublin Core), cover
@@ -192,11 +241,7 @@ class LibraryLocalDataSource {
     final content = await File(filePath).readAsString();
     final document = XmlDocument.parse(content);
 
-    // FB2 marks each paragraph with its own <p>, but innerText on <body>
-    // alone concatenates them with no separator - join per-<p> instead so
-    // paragraph breaks (blank line, same contract as htmlToPlainText) survive.
-    final paragraphs = document
-        .findAllElements('p')
+    final paragraphs = _fb2ParagraphElements(document.rootElement)
         .map((p) => p.innerText.trim())
         .where((p) => p.isNotEmpty);
 
@@ -257,17 +302,14 @@ class LibraryLocalDataSource {
       var wordCount = 0;
       var paragraphCount = 0;
 
-      // Every <p> here (whatever it's nested under - title, epigraph,
-      // subtitle, or a section's own body text) becomes its own paragraph
-      // in extractFb2Text's flat join, each preceded by one paragraphBreak
-      // token once split into words - so word/paragraph counts have to
-      // treat them all uniformly to land on the right index.
+      // Every paragraph-bearing element here (whatever it's nested under -
+      // title, epigraph, subtitle, verse, a section's own body text)
+      // becomes its own paragraph in extractFb2Text's flat join, each
+      // preceded by one paragraphBreak token once split into words - so
+      // word/paragraph counts have to treat them all uniformly to land on
+      // the right index.
       void countParagraphsIn(XmlElement element) {
-        final paragraphs = [
-          if (element.name.local == 'p') element,
-          ...element.findAllElements('p'),
-        ];
-        for (final p in paragraphs) {
+        for (final p in _fb2ParagraphElements(element)) {
           wordCount += _countWords(p.innerText);
           paragraphCount += 1;
         }
