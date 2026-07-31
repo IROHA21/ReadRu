@@ -28,6 +28,31 @@ import 'package:read_ru/l10n/generated/app_localizations.dart';
 // collide across different book/spoken-language pairs.
 final Map<String, String> _translationCache = {};
 
+// Increments every time a translation actually falls through to Yandex
+// (network/cloud) - _YandexIndicatorIcon listens for this to flash briefly
+// each time, then fade back to dim. A plain bool doesn't work here: once
+// Yandex is used once its value stays true, and ValueNotifier only notifies
+// listeners when the value actually CHANGES - re-setting it to the same
+// true on every subsequent word would silently stop notifying at all. An
+// ever-incrementing counter always changes, so it always fires.
+final ValueNotifier<int> yandexTranslationTick = ValueNotifier<int>(0);
+
+// Shared connectivity tracking - a single OS-level subscription that both
+// _YandexIndicatorIcon (for its offline icon state) and _translateOnDevice
+// (to decide whether an "unchanged" ML Kit result is worth discarding, see
+// below) read from, instead of each keeping its own separate listener.
+final ValueNotifier<bool> isOffline = ValueNotifier<bool>(false);
+bool _connectivityTrackingStarted = false;
+
+void _ensureConnectivityTracking() {
+  if (_connectivityTrackingStarted) return;
+  _connectivityTrackingStarted = true;
+  Connectivity().checkConnectivity().then((results) => isOffline.value = !results.hasConnectivity);
+  Connectivity().onConnectivityChanged.listen((results) {
+    isOffline.value = !results.hasConnectivity;
+  });
+}
+
 // Strips leading/trailing punctuation - \p{L}/\p{N} match any letter/number
 // in any script (Cyrillic included), so this doesn't assume Latin text.
 String _stripPunctuation(String word) {
@@ -41,10 +66,20 @@ String _stripPunctuation(String word) {
 // to true only to isolate ML Kit again for debugging.
 const bool _debugDisableYandexFallback = false;
 
+// TEMPORARY DEBUG SWITCH - while true, skips the on-device attempt entirely
+// so every translation goes through Yandex, for testing the cloud indicator
+// icon without needing a word ML Kit can't handle. Flip back to false
+// before shipping.
+const bool _debugForceYandex = false;
+
 // ML Kit on-device translation first (silent, offline, free); Yandex is a
-// silent fallback for whatever ML Kit doesn't handle well - a thrown error
-// (model not downloaded, unsupported pair), an empty result, or a result
-// that's just the input unchanged. No user-facing toggle between the two.
+// fallback for whatever ML Kit doesn't handle well - a thrown error (model
+// not downloaded, unsupported pair), an empty result, or a result that's
+// just the input unchanged. An unchanged result can't be trusted on its own:
+// it's indistinguishable from a real (undocumented) ML Kit failure mode
+// where it silently echoes the input back for specific content with no
+// error at all - see https://github.com/googlesamples/mlkit/issues/1051.
+// No user-facing toggle between the two engines.
 //
 // [sourceLanguage] is null when the book's language isn't set or isn't one
 // ML Kit/Yandex can translate - in that case there's nothing to try, so this
@@ -54,20 +89,40 @@ Future<String> _translateWord(
   required TranslateLanguage? sourceLanguage,
   required TranslateLanguage? targetLanguage,
 }) async {
+  _ensureConnectivityTracking();
   if (sourceLanguage == null) {
     return translationUnsupportedMarker;
   }
   final target = targetLanguage ?? TranslateLanguage.english;
 
+  // Same source and target language (e.g. an English book with English as
+  // the spoken language) - the word is already "translated," and there's
+  // nothing ML Kit or Yandex could usefully add. Skip both engines entirely
+  // rather than treating the inevitable unchanged result as a failure and
+  // burning a Yandex call on every single word in the book.
+  if (sourceLanguage == target) return word;
+
   final cacheKey = '${sourceLanguage.bcpCode}>${target.bcpCode}:$word';
   final cached = _translationCache[cacheKey];
   if (cached != null) return cached;
 
-  final onDevice = await _translateOnDevice(word, sourceLanguage, target);
-  final result = onDevice ??
-      (_debugDisableYandexFallback
-          ? '(ml kit failed)'
-          : await _translateWithYandex(word, sourceLanguage.bcpCode, target.bcpCode));
+  final onDevice =
+      _debugForceYandex ? null : await _translateOnDevice(word, sourceLanguage, target);
+  String result;
+  if (onDevice != null) {
+    result = onDevice;
+  } else if (_debugDisableYandexFallback) {
+    result = '(ml kit failed)';
+  } else if (isOffline.value) {
+    // No point attempting a network call that's guaranteed to fail (and,
+    // if the connection is in a half-broken state rather than fully off,
+    // could hang for a while before it does) - go straight to the same
+    // failure result Yandex would eventually return anyway.
+    result = translationFailedMarker;
+  } else {
+    yandexTranslationTick.value++;
+    result = await _translateWithYandex(word, sourceLanguage.bcpCode, target.bcpCode);
+  }
 
   if (isUsableTranslation(result)) _translationCache[cacheKey] = result;
   return result;
@@ -106,22 +161,36 @@ String _displayTranslation(String raw, AppLocalizations l10n) {
 Future<void> _warnIfOffline(BuildContext context) async {
   final results = await Connectivity().checkConnectivity();
   if (results.hasConnectivity || !context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(AppLocalizations.of(context)!.offlineTranslationWarning)),
+  final l10n = AppLocalizations.of(context)!;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(l10n.offlineTranslationWarningTitle),
+      content: Text(l10n.offlineTranslationWarning),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(l10n.close)),
+      ],
+    ),
   );
 }
+
+// Calls our own Cloud Function (cloud_functions/translate_proxy) instead of
+// Yandex directly - the real Yandex API key/folder id live only in that
+// function's environment variables now, never in the compiled app. The
+// function passes Yandex's response straight through, so the parsing here
+// is unchanged from the old direct-call version.
+const String _translateProxyUrl = 'https://functions.yandexcloud.net/d4earbgeikkarhb5pj6r';
 
 Future<String> _translateWithYandex(String word, String sourceCode, String targetCode) async {
   try {
     final response = await http.post(
-      Uri.parse('https://translate.api.cloud.yandex.net/translate/v2/translate'),
+      Uri.parse(_translateProxyUrl),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Api-Key $yandexTranslateApiKey',
+        'X-App-Secret': appSharedSecret,
       },
       body: jsonEncode({
-        'folderId': yandexTranslateFolderId,
-        'texts': [word],
+        'word': word,
         'sourceLanguageCode': sourceCode,
         'targetLanguageCode': targetCode,
       }),
@@ -130,6 +199,97 @@ Future<String> _translateWithYandex(String word, String sourceCode, String targe
     return (decoded['translations'] as List).first['text'] as String;
   } catch (e) {
     return translationFailedMarker;
+  }
+}
+
+// Always visible at a dim baseline (so there's something to compare the
+// flash against), and flashes to full accent color the instant Yandex is
+// used, then eases back down to dim over a beat - a brief "light up," not a
+// state that just stays on.
+class _YandexIndicatorIcon extends StatefulWidget {
+  const _YandexIndicatorIcon();
+
+  @override
+  State<_YandexIndicatorIcon> createState() => _YandexIndicatorIconState();
+}
+
+class _YandexIndicatorIconState extends State<_YandexIndicatorIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late int _lastTick;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastTick = yandexTranslationTick.value;
+    // Idle value is 0 (the controller's default lowerBound) so the icon
+    // starts dim, not lit - only _onTick ever pushes it up.
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    yandexTranslationTick.addListener(_onTick);
+    _ensureConnectivityTracking();
+    isOffline.addListener(_onOfflineChanged);
+  }
+
+  void _onOfflineChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onTick() {
+    if (yandexTranslationTick.value == _lastTick) return;
+    _lastTick = yandexTranslationTick.value;
+    // Jump straight to fully lit (no animated fade-in - the flash should be
+    // instant), then animate the decay back down to dim.
+    _controller.value = 1;
+    _controller.animateTo(0, curve: Curves.easeOut);
+  }
+
+  @override
+  void dispose() {
+    yandexTranslationTick.removeListener(_onTick);
+    isOffline.removeListener(_onOfflineChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context)!;
+
+    // Offline: Yandex can't be reached at all, so the pulse is moot - an
+    // explicit red X stacked over the cloud says so directly instead of
+    // showing a cloud that will never light up.
+    if (isOffline.value) {
+      return Tooltip(
+        message: l10n.yandexOfflineTooltip,
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Icon(Icons.cloud, size: 18, color: colors.textSecondary.withValues(alpha: 0.5)),
+            const Icon(Icons.close, size: 14, color: Colors.red),
+          ],
+        ),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final lit = _controller.value;
+        return Tooltip(
+          message: _controller.isAnimating ? l10n.yandexActiveTooltip : l10n.yandexInactiveTooltip,
+          child: Icon(
+            Icons.cloud,
+            size: 18,
+            color: Color.lerp(colors.textSecondary.withValues(alpha: 0.35), colors.accent, lit),
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -297,6 +457,10 @@ class _ReaderContent extends StatelessWidget {
                         style: TextStyle(fontSize: 13, color: colors.textSecondary),
                       );
                     }),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: _YandexIndicatorIcon(),
                   ),
                   IconButton(
                     icon: Icon(Icons.settings, color: colors.textPrimary),
