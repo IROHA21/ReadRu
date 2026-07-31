@@ -1,4 +1,4 @@
-package com.example.anyread
+package com.iroiro.anyread
 
 import io.flutter.embedding.android.FlutterActivity
 
