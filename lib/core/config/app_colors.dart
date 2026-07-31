@@ -40,8 +40,10 @@ class AppColors {
   );
 
   // Reads brightness off the current Theme, which main.dart drives from
-  // SettingsCubit's isDarkMode - so every screen stays in sync with the
-  // night-mode setting without needing its own settings lookup.
+  // SettingsCubit's themeMode - so every screen stays in sync with the
+  // night-mode setting (including "system", which Flutter's own
+  // ThemeMode.system already keeps live with the OS) without needing its
+  // own settings lookup.
   static AppColors of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? dark : light;
 }

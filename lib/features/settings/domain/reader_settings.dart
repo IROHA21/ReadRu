@@ -20,10 +20,16 @@ const List<Color> readerColorOptions = [
 // advance. rightToLeft flips both swipes, for readers who prefer it.
 enum PageSwipeDirection { leftToRight, rightToLeft }
 
+// system (default) follows the phone's own light/dark setting live: main.dart
+// maps this straight to Flutter's ThemeMode.system, which already tracks
+// platform brightness changes with no polling of our own needed. light/dark
+// are an explicit override for anyone who wants the app to ignore the OS.
+enum AppThemeMode { system, light, dark }
+
 class ReaderSettings {
   final double fontSize;
   final ReaderFont font;
-  final bool isDarkMode;
+  final AppThemeMode themeMode;
   final bool highlightEnabled;
   final Color highlightColor;
   final double translationFontSize;
@@ -33,7 +39,7 @@ class ReaderSettings {
   const ReaderSettings({
     this.fontSize = 16,
     this.font = ReaderFont.roboto,
-    this.isDarkMode = false,
+    this.themeMode = AppThemeMode.system,
     this.highlightEnabled = true,
     this.highlightColor = const Color(0xFFFFD54F),
     this.translationFontSize = 12,
@@ -46,7 +52,7 @@ class ReaderSettings {
   ReaderSettings copyWith({
     double? fontSize,
     ReaderFont? font,
-    bool? isDarkMode,
+    AppThemeMode? themeMode,
     bool? highlightEnabled,
     Color? highlightColor,
     double? translationFontSize,
@@ -56,7 +62,7 @@ class ReaderSettings {
     return ReaderSettings(
       fontSize: fontSize ?? this.fontSize,
       font: font ?? this.font,
-      isDarkMode: isDarkMode ?? this.isDarkMode,
+      themeMode: themeMode ?? this.themeMode,
       highlightEnabled: highlightEnabled ?? this.highlightEnabled,
       highlightColor: highlightColor ?? this.highlightColor,
       translationFontSize: translationFontSize ?? this.translationFontSize,
@@ -69,7 +75,7 @@ class ReaderSettings {
     return {
       'fontSize': fontSize,
       'font': font.name,
-      'isDarkMode': isDarkMode,
+      'themeMode': themeMode.name,
       'highlightEnabled': highlightEnabled,
       'highlightColor': highlightColor.toARGB32(),
       'translationFontSize': translationFontSize,
@@ -85,7 +91,19 @@ class ReaderSettings {
         (f) => f.name == json['font'],
         orElse: () => defaults.font,
       ),
-      isDarkMode: json['isDarkMode'] as bool? ?? defaults.isDarkMode,
+      // Legacy installs only ever persisted the old isDarkMode bool - map
+      // that explicit choice across so existing users don't get switched
+      // to "system" (and a possibly different theme) out from under them.
+      // A fresh install with neither key present gets the new system
+      // default, which is the whole point of this change.
+      themeMode: json['themeMode'] != null
+          ? AppThemeMode.values.firstWhere(
+              (m) => m.name == json['themeMode'],
+              orElse: () => defaults.themeMode,
+            )
+          : (json['isDarkMode'] is bool
+              ? (json['isDarkMode'] as bool ? AppThemeMode.dark : AppThemeMode.light)
+              : defaults.themeMode),
       highlightEnabled: json['highlightEnabled'] as bool? ?? defaults.highlightEnabled,
       highlightColor: json['highlightColor'] is int
           ? Color(json['highlightColor'] as int)

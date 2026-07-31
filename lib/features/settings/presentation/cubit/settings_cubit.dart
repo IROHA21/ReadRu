@@ -31,7 +31,8 @@ class SettingsCubit extends Cubit<ReaderSettings> {
 
   Future<void> setFont(ReaderFont font) => _update((s) => s.copyWith(font: font));
 
-  Future<void> setDarkMode(bool isDarkMode) => _update((s) => s.copyWith(isDarkMode: isDarkMode));
+  Future<void> setThemeMode(AppThemeMode themeMode) =>
+      _update((s) => s.copyWith(themeMode: themeMode));
 
   Future<void> setHighlightEnabled(bool enabled) =>
       _update((s) => s.copyWith(highlightEnabled: enabled));

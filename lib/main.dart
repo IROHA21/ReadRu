@@ -10,6 +10,7 @@ import 'package:read_ru/features/library/presentation/screens/library_list_scree
 import 'package:read_ru/features/onboarding/domain/onboarding_settings.dart';
 import 'package:read_ru/features/onboarding/presentation/cubit/onboarding_cubit.dart';
 import 'package:read_ru/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:read_ru/features/purchases/presentation/remove_ads_manager.dart';
 import 'package:read_ru/features/settings/domain/reader_settings.dart';
 import 'package:read_ru/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:read_ru/l10n/generated/app_localizations.dart';
@@ -21,11 +22,24 @@ import 'package:read_ru/l10n/generated/app_localizations.dart';
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() {
+  // Must run before anything touches platform channels (ad SDKs, IAP) -
+  // runApp() normally does this implicitly, but _initializeAds() below is
+  // fired before runApp() so it needs the binding ready explicitly first.
+  WidgetsFlutterBinding.ensureInitialized();
   setupLocator();
-  // Fire-and-forget: don't block first frame on ad SDK init/prefetch.
-  unawaited(getIt<InterstitialAdManager>().initialize().then((_) => getIt<InterstitialAdManager>().load()));
+  // Fire-and-forget: don't block first frame on ad SDK init/prefetch, or
+  // on the one-time store restore-purchases check.
+  unawaited(_initializeAds());
   runApp(const MyApp());
   WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_warnIfOfflineAtStartup()));
+}
+
+// Skips loading ads at all once Remove Ads is confirmed purchased.
+Future<void> _initializeAds() async {
+  await getIt<RemoveAdsManager>().initialize();
+  if (getIt<RemoveAdsManager>().adsRemoved) return;
+  await getIt<InterstitialAdManager>().initialize();
+  await getIt<InterstitialAdManager>().load();
 }
 
 // Same offline warning the reader shows again each time a book is opened
@@ -70,7 +84,11 @@ class MyApp extends StatelessWidget {
                   ),
                   scaffoldBackgroundColor: AppColors.dark.background,
                 ),
-                themeMode: settings.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+                themeMode: switch (settings.themeMode) {
+                  AppThemeMode.system => ThemeMode.system,
+                  AppThemeMode.light => ThemeMode.light,
+                  AppThemeMode.dark => ThemeMode.dark,
+                },
                 locale: Locale(onboarding.spokenLanguage?.bcpCode ?? 'en'),
                 localizationsDelegates: AppLocalizations.localizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,

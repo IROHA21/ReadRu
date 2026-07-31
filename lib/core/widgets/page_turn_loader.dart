@@ -13,7 +13,8 @@ class PageTurnLoader extends StatefulWidget {
   State<PageTurnLoader> createState() => _PageTurnLoaderState();
 }
 
-class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProviderStateMixin {
+class _PageTurnLoaderState extends State<PageTurnLoader>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
@@ -45,54 +46,64 @@ class _PageTurnLoaderState extends State<PageTurnLoader> with SingleTickerProvid
     final colors = AppColors.of(context);
     // Single-hue brand mark (no more flag-color duality now that the app
     // isn't Russian-specific): base right sits at the logo's own faded
-    // opacity, and the turning page is a solid accent - at rest it's
-    // indistinguishable from the solid left half, so the resting/looping
-    // frame reads exactly like the static logo, briefly going full-solid
-    // at the turn's peak before snapping back.
+    // opacity. The two book halves (covers) stay accent-colored in both
+    // themes; only the turning page itself is a fixed paper-cream color in
+    // both themes, like an actual page flipping over the colored cover
+    // underneath.
     final baseRight = colors.accent.withValues(alpha: 0.55);
+    final pageColor = AppColors.light.card;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 160,
-          height: 130,
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              final angle = _rotationFor(_controller.value);
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(160, 130),
-                    painter: _BookBasePainter(leftColor: colors.accent, rightColor: baseRight),
-                  ),
-                  Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.0015)
-                      ..rotateY(angle),
-                    child: CustomPaint(
+    // Purely decorative - there's nothing here a screen reader should stop
+    // on or announce, and doing so was pulling TalkBack's yellow focus
+    // highlight onto the "AnyRead" text every time this appears (e.g. in
+    // the loading overlay dialog), which reads as a rendering bug.
+    return ExcludeSemantics(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 160,
+            height: 130,
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                final angle = _rotationFor(_controller.value);
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CustomPaint(
                       size: const Size(160, 130),
-                      painter: _PagePainter(color: colors.accent),
+                      painter: _BookBasePainter(
+                        leftColor: colors.accent,
+                        rightColor: baseRight,
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
+                    Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, 0.0015)
+                        ..rotateY(angle),
+                      child: CustomPaint(
+                        size: const Size(160, 130),
+                        painter: _PagePainter(color: pageColor),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 28),
-        Text(
-          'AnyRead',
-          style: GoogleFonts.literata(
-            fontWeight: FontWeight.w600,
-            fontSize: 40,
-            color: colors.textPrimary,
+          const SizedBox(height: 28),
+          Text(
+            'AnyRead',
+            style: GoogleFonts.literata(
+              fontWeight: FontWeight.w600,
+              fontSize: 40,
+              color: colors.textPrimary,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -118,7 +129,8 @@ Path _leftHalfPath(Size size) {
   // 22 is the midpoint of the 44-wide viewBox, which keeps the Transform's
   // Alignment.center rotation hinge aligned with the spine for both the
   // base painter and the rotating page painter below.
-  final scale = math.min(size.width / viewWidth, size.height / viewHeight) * 0.86;
+  final scale =
+      math.min(size.width / viewWidth, size.height / viewHeight) * 0.86;
   final dx = (size.width - viewWidth * scale) / 2;
   final dy = (size.height - viewHeight * scale) / 2;
   final matrix = Matrix4.identity()
@@ -148,7 +160,8 @@ class _BookBasePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BookBasePainter oldDelegate) =>
-      oldDelegate.leftColor != leftColor || oldDelegate.rightColor != rightColor;
+      oldDelegate.leftColor != leftColor ||
+      oldDelegate.rightColor != rightColor;
 }
 
 class _PagePainter extends CustomPainter {
@@ -164,5 +177,6 @@ class _PagePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PagePainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _PagePainter oldDelegate) =>
+      oldDelegate.color != color;
 }

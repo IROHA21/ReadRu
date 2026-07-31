@@ -71,12 +71,23 @@ class ReadingSettingsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               _SectionLabel(l10n.nightModeLabel, colors),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.darkThemeLabel, style: TextStyle(color: colors.textPrimary)),
-                value: settings.isDarkMode,
-                activeThumbColor: colors.accent,
-                onChanged: (value) => settingsCubit.setDarkMode(value),
+              SegmentedButton<AppThemeMode>(
+                segments: [
+                  ButtonSegment(
+                    value: AppThemeMode.system,
+                    label: Text(l10n.themeModeSystem),
+                  ),
+                  ButtonSegment(
+                    value: AppThemeMode.light,
+                    label: Text(l10n.themeModeLight),
+                  ),
+                  ButtonSegment(
+                    value: AppThemeMode.dark,
+                    label: Text(l10n.themeModeDark),
+                  ),
+                ],
+                selected: {settings.themeMode},
+                onSelectionChanged: (selection) => settingsCubit.setThemeMode(selection.first),
               ),
               const SizedBox(height: 12),
               _SectionLabel(l10n.tapHighlightLabel, colors),
