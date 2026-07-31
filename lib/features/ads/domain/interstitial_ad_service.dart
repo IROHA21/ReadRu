@@ -13,6 +13,8 @@ abstract class InterstitialAdService {
   /// Shows the loaded ad, if any, and starts loading the next one once
   /// it's dismissed. If nothing is loaded yet, kicks off a load for next
   /// time and returns immediately without showing anything - callers
-  /// should never block navigation on an ad being ready.
-  Future<void> showIfReady();
+  /// should never block navigation on an ad being ready. Returns whether
+  /// an ad was actually shown, so callers can count real impressions
+  /// rather than just calls.
+  Future<bool> showIfReady();
 }

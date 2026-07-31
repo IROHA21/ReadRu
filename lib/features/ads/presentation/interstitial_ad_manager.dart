@@ -22,5 +22,5 @@ class InterstitialAdManager implements InterstitialAdService {
   Future<void> load() => _service.load();
 
   @override
-  Future<void> showIfReady() => _service.showIfReady();
+  Future<bool> showIfReady() => _service.showIfReady();
 }

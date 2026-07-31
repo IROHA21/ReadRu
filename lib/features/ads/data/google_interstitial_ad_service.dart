@@ -52,13 +52,14 @@ class GoogleInterstitialAdService implements InterstitialAdService {
   }
 
   @override
-  Future<void> showIfReady() async {
+  Future<bool> showIfReady() async {
     final ad = _ad;
     if (ad == null) {
       unawaited(load());
-      return;
+      return false;
     }
     _ad = null;
     await ad.show();
+    return true;
   }
 }

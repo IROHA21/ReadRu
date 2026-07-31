@@ -1,6 +1,8 @@
 import 'package:get_it/get_it.dart';
 import 'package:read_ru/features/ads/presentation/interstitial_ad_manager.dart';
 import 'package:read_ru/features/library/data/datasources/library_local_data_source.dart';
+import 'package:read_ru/features/purchases/data/remove_ads_local_data_source.dart';
+import 'package:read_ru/features/purchases/presentation/remove_ads_manager.dart';
 import 'package:read_ru/features/library/data/datasources/library_storage_data_source.dart';
 import 'package:read_ru/features/library/domain/repositories/library_repository.dart';
 import 'package:read_ru/features/library/data/repositories/library_repository_impl.dart';
@@ -55,4 +57,9 @@ void setupLocator() {
   // startup (Yandex for CIS, AdMob elsewhere) and reused for every
   // "before read" prompt.
   getIt.registerLazySingleton<InterstitialAdManager>(() => InterstitialAdManager());
+
+  // Remove Ads purchase - checked against the store once at startup, then
+  // cached; see RemoveAdsManager.initialize().
+  getIt.registerLazySingleton<RemoveAdsLocalDataSource>(() => RemoveAdsLocalDataSource());
+  getIt.registerLazySingleton<RemoveAdsManager>(() => RemoveAdsManager(getIt<RemoveAdsLocalDataSource>()));
 }

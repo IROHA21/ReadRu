@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:read_ru/core/config/app_colors.dart';
+import 'package:read_ru/features/purchases/presentation/screens/remove_ads_screen.dart';
 import 'package:read_ru/features/settings/presentation/screens/language_settings_screen.dart';
 import 'package:read_ru/features/settings/presentation/screens/reading_settings_screen.dart';
 import 'package:read_ru/l10n/generated/app_localizations.dart';
@@ -44,6 +45,16 @@ class SettingsScreen extends StatelessWidget {
             colors: colors,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LanguageSettingsScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SettingsFolder(
+            icon: Icons.block,
+            title: l10n.settingsRemoveAdsTitle,
+            subtitle: l10n.settingsRemoveAdsSubtitle,
+            colors: colors,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RemoveAdsScreen()),
             ),
           ),
         ],
