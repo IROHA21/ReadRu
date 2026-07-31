@@ -23,14 +23,21 @@ class LibraryListCubit extends Cubit<LibraryListState> {
 
   // Returns the added document (for the screen to check its language
   // pack against) - null if the picker was cancelled or it failed.
+  //
+  // Drives the library body's own LibraryListLoading() state (the plain
+  // centered PageTurnLoader, no dimmed barrier) for the whole pick+parse -
+  // the same simple loading presentation the initial library load already
+  // uses, rather than a separate dialog overlay stacked on top of it.
   Future<Document?> addDocument() async {
+    emit(LibraryListLoading());
     try {
-      final document = await
-      repository.pickDocument();
+      final document = await repository.pickDocument();
       if (document == null) {
+        await loadLibrary();
         return null;
       }
-      await loadLibrary();
+      final documents = await repository.getLibrary();
+      emit(LibraryListLoaded(documents));
       return document;
     } catch (e) {
       emit(LibraryListError(e.toString()));
