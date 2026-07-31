@@ -290,6 +290,12 @@ class _DownloadModelsStep extends StatefulWidget {
 class _DownloadModelsStepState extends State<_DownloadModelsStep> {
   final _managerKey = GlobalKey<LanguagePackManagerState>();
   bool _downloading = false;
+  // Set once a download attempt has finished - the button then reads
+  // "Continue" instead of silently completing onboarding, so a failed
+  // download (shown as "Download failed" with the real error under it,
+  // right there in the list) is something the user actually sees before
+  // moving on, not something that happens invisibly behind a page change.
+  bool _downloaded = false;
 
   List<TranslateLanguage> _languagesFor(OnboardingSettings settings) {
     final languages = <TranslateLanguage>{
@@ -305,41 +311,71 @@ class _DownloadModelsStepState extends State<_DownloadModelsStep> {
     return BlocBuilder<OnboardingCubit, OnboardingSettings>(
       builder: (context, settings) {
         final languages = _languagesFor(settings);
+        // Never require more than there are to give - if onboarding only
+        // offered 1 language total (e.g. spoken and book language are the
+        // same), completing it can't be blocked on a threshold it's
+        // impossible to reach.
+        final requiredReady = languages.length < 2 ? languages.length : 2;
+        final readyCount = _managerKey.currentState?.readyCount ?? 0;
+        final canContinue = readyCount >= requiredReady;
 
         return _StepScaffold(
           title: l10n.downloadStepTitle,
           subtitle: l10n.downloadStepSubtitle,
           body: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: LanguagePackManager(key: _managerKey, languages: languages),
+            child: LanguagePackManager(
+              key: _managerKey,
+              languages: languages,
+              onChanged: () => setState(() {}),
+            ),
           ),
-          bottomBar: Row(
+          bottomBar: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              OutlinedButton(onPressed: widget.onBack, child: Text(l10n.back)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _downloading
-                      ? null
-                      : () => context.read<OnboardingCubit>().completeOnboarding().then((_) => widget.onDone()),
-                  child: Text(l10n.skipForNow),
+              if (_downloaded && !canContinue)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    l10n.downloadMinimumRequired(requiredReady),
+                    style: const TextStyle(fontSize: 12, color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton(
-                  onPressed: _downloading
-                      ? null
-                      : () async {
-                          setState(() => _downloading = true);
-                          await _managerKey.currentState?.downloadMissing();
-                          setState(() => _downloading = false);
-                          if (!context.mounted) return;
-                          await context.read<OnboardingCubit>().completeOnboarding();
-                          widget.onDone();
-                        },
-                  child: Text(_downloading ? l10n.downloading : l10n.download),
-                ),
+              Row(
+                children: [
+                  OutlinedButton(onPressed: widget.onBack, child: Text(l10n.back)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _downloading
+                          ? null
+                          : _downloaded
+                              ? (canContinue
+                                  ? () async {
+                                      await context.read<OnboardingCubit>().completeOnboarding();
+                                      widget.onDone();
+                                    }
+                                  : null)
+                              : () async {
+                                  setState(() => _downloading = true);
+                                  await _managerKey.currentState?.downloadMissing();
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _downloading = false;
+                                    _downloaded = true;
+                                  });
+                                },
+                      child: Text(
+                        _downloading
+                            ? l10n.downloading
+                            : _downloaded
+                                ? l10n.continueButton
+                                : l10n.download,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

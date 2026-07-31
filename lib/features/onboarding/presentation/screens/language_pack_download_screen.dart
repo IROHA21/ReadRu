@@ -19,6 +19,12 @@ class LanguagePackDownloadScreen extends StatefulWidget {
 class _LanguagePackDownloadScreenState extends State<LanguagePackDownloadScreen> {
   final _managerKey = GlobalKey<LanguagePackManagerState>();
   bool _downloading = false;
+  // Set once a download attempt has finished (regardless of per-language
+  // success/failure) - the button then reads "Continue" instead of
+  // auto-popping, so the user actually sees the result (including any
+  // "failed - tap to retry" rows) before moving on rather than being
+  // whisked straight into the book.
+  bool _downloaded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +49,24 @@ class _LanguagePackDownloadScreenState extends State<LanguagePackDownloadScreen>
           child: FilledButton(
             onPressed: _downloading
                 ? null
-                : () async {
-                    setState(() => _downloading = true);
-                    await _managerKey.currentState?.downloadMissing();
-                    if (!context.mounted) return;
-                    setState(() => _downloading = false);
-                    Navigator.of(context).pop();
-                  },
-            child: Text(_downloading ? l10n.downloading : l10n.download),
+                : _downloaded
+                    ? () => Navigator.of(context).pop()
+                    : () async {
+                        setState(() => _downloading = true);
+                        await _managerKey.currentState?.downloadMissing();
+                        if (!context.mounted) return;
+                        setState(() {
+                          _downloading = false;
+                          _downloaded = true;
+                        });
+                      },
+            child: Text(
+              _downloading
+                  ? l10n.downloading
+                  : _downloaded
+                      ? l10n.continueButton
+                      : l10n.download,
+            ),
           ),
         ),
       ),

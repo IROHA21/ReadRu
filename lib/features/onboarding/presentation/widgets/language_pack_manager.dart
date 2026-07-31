@@ -28,6 +28,12 @@ class LanguagePackManager extends StatefulWidget {
   final bool showSearch;
   final bool showDelete;
   final bool showSummary;
+  // Fired every time a language's status changes (check complete, download
+  // finished/failed, delete) - lets a parent that gates its own UI on
+  // readyCount (e.g. onboarding's Continue button) rebuild and re-evaluate,
+  // including after a per-row retry that this widget handles internally
+  // without the parent otherwise knowing anything changed.
+  final VoidCallback? onChanged;
 
   const LanguagePackManager({
     super.key,
@@ -36,6 +42,7 @@ class LanguagePackManager extends StatefulWidget {
     this.showSearch = false,
     this.showDelete = false,
     this.showSummary = true,
+    this.onChanged,
   });
 
   @override
@@ -46,6 +53,10 @@ class LanguagePackManagerState extends State<LanguagePackManager> {
   final _modelManager = OnDeviceTranslatorModelManager();
   final Map<TranslateLanguage, _PackStatus> _status = {};
   final Map<TranslateLanguage, int> _elapsedSeconds = {};
+  // Shown directly under a failed row - there's no device-log access when
+  // this happens on a real user's phone, so the actual native error (not
+  // just "failed") needs to be visible right here to ever be diagnosable.
+  final Map<TranslateLanguage, String> _errorDetail = {};
   Timer? _ticker;
   String _query = '';
   bool _expanded = false;
@@ -68,13 +79,33 @@ class LanguagePackManagerState extends State<LanguagePackManager> {
     super.dispose();
   }
 
+  // Every status mutation goes through here so widget.onChanged always
+  // fires alongside setState - callers gating their own UI on readyCount
+  // (onboarding's Continue button) need to hear about every change,
+  // including a per-row retry that happens entirely inside this widget.
+  void _setStatus(TranslateLanguage language, _PackStatus status) {
+    if (!mounted) return;
+    setState(() => _status[language] = status);
+    widget.onChanged?.call();
+  }
+
   Future<void> _checkAll() async {
     for (final language in widget.languages) {
       if (_status.containsKey(language)) continue;
-      setState(() => _status[language] = _PackStatus.checking);
-      final downloaded = await _modelManager.isModelDownloaded(language.bcpCode);
+      _setStatus(language, _PackStatus.checking);
+      // One language's check throwing shouldn't stop every language after
+      // it in this loop from ever being checked - treat it as "not
+      // downloaded" (safe default: offers a download instead of getting
+      // stuck on "Checking...") and keep going.
+      bool downloaded;
+      try {
+        downloaded = await _modelManager.isModelDownloaded(language.bcpCode);
+      } catch (e) {
+        debugPrint('LanguagePackManager: isModelDownloaded(${language.bcpCode}) threw: $e');
+        downloaded = false;
+      }
       if (!mounted) return;
-      setState(() => _status[language] = downloaded ? _PackStatus.ready : _PackStatus.notDownloaded);
+      _setStatus(language, downloaded ? _PackStatus.ready : _PackStatus.notDownloaded);
     }
   }
 
@@ -90,11 +121,18 @@ class LanguagePackManagerState extends State<LanguagePackManager> {
   /// callers (onboarding) can poll this after downloadMissing() finishes.
   bool get allReady => widget.languages.every((l) => _status[l] == _PackStatus.ready);
 
+  /// How many of this panel's languages are confirmed downloaded - callers
+  /// that only require a minimum count (rather than every language) poll
+  /// this, and should also pass onChanged so they hear about updates from a
+  /// per-row retry, which happens without the caller otherwise knowing.
+  int get readyCount => widget.languages.where((l) => _status[l] == _PackStatus.ready).length;
+
   Future<void> _download(TranslateLanguage language) async {
     setState(() {
       _status[language] = _PackStatus.downloading;
       _elapsedSeconds[language] = 0;
     });
+    widget.onChanged?.call();
     _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
@@ -104,12 +142,24 @@ class LanguagePackManagerState extends State<LanguagePackManager> {
       });
     });
     try {
+      // downloadModel() can resolve to false (not "success") without
+      // throwing - trusting a clean await here previously marked packs
+      // ready that were never actually usable. Verify against the model
+      // manager's own record instead of trusting the call's completion.
       await _modelManager.downloadModel(language.bcpCode, isWifiRequired: false);
+      final confirmed = await _modelManager.isModelDownloaded(language.bcpCode);
+      if (!confirmed) {
+        const detail = 'downloadModel() completed but isModelDownloaded still reports false';
+        debugPrint('LanguagePackManager: downloadModel(${language.bcpCode}) - $detail');
+        _errorDetail[language] = detail;
+      }
       if (!mounted) return;
-      setState(() => _status[language] = _PackStatus.ready);
-    } catch (_) {
+      _setStatus(language, confirmed ? _PackStatus.ready : _PackStatus.failed);
+    } catch (e) {
+      debugPrint('LanguagePackManager: downloadModel(${language.bcpCode}) threw: $e');
+      _errorDetail[language] = e.toString();
       if (!mounted) return;
-      setState(() => _status[language] = _PackStatus.failed);
+      _setStatus(language, _PackStatus.failed);
     }
   }
 
@@ -117,7 +167,7 @@ class LanguagePackManagerState extends State<LanguagePackManager> {
     try {
       await _modelManager.deleteModel(language.bcpCode);
       if (!mounted) return;
-      setState(() => _status[language] = _PackStatus.notDownloaded);
+      _setStatus(language, _PackStatus.notDownloaded);
     } catch (_) {
       // Leave it marked ready - if delete silently failed, that's still
       // the true state on disk.
@@ -214,8 +264,21 @@ class LanguagePackManagerState extends State<LanguagePackManager> {
                   ),
                 ),
               _PackStatus.ready => Text(l10n.downloadedStatus, style: TextStyle(color: colors.textSecondary)),
-              _PackStatus.failed =>
-                Text(l10n.downloadFailedStatus, style: TextStyle(color: Colors.red.shade400)),
+              _PackStatus.failed => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(l10n.downloadFailedStatus, style: TextStyle(color: Colors.red.shade400)),
+                    if (_errorDetail[language] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          _errorDetail[language]!,
+                          style: TextStyle(fontSize: 11, color: Colors.red.shade300),
+                        ),
+                      ),
+                  ],
+                ),
               _PackStatus.notDownloaded || null =>
                 Text(l10n.notDownloadedStatus(estimatedModelSizeMb), style: TextStyle(color: colors.textSecondary)),
             },
