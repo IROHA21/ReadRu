@@ -82,6 +82,16 @@ class WordMeasurer {
   }
 }
 
+/// TextPainter's measured row height runs very slightly under what the same
+/// text actually occupies once rendered through a real Wrap/Text - close
+/// enough that most pages have slack to absorb it, but a page whose last row
+/// lands right at the containerHeight boundary can fit one row more than
+/// actually renders, clipping (or visually overlapping the fixed bottom bar
+/// with) that row. Keeping the last row's bottom this far clear of the
+/// boundary is enough slack to absorb that drift without losing a
+/// perceptible amount of page content.
+const double _pageHeightSafetyMargin = 12;
+
 /// Simulates the reader's Wrap layout word by word with measured widths,
 /// cutting a new page when the next row would not fit the container height.
 /// [chapterBreaks] are word indices a chapter starts at (see Chapter.wordIndex) -
@@ -99,6 +109,7 @@ List<List<String>> paginateMeasured({
   final pages = <List<String>>[];
   var page = <String>[];
 
+  final usableHeight = containerHeight - _pageHeightSafetyMargin;
   final rowHeight = measurer.rowHeight();
   var lineX = 0.0;
   var usedHeight = rowHeight;
@@ -117,7 +128,7 @@ List<List<String>> paginateMeasured({
       // Forces the next word onto a new row, same page-break logic as an
       // ordinary wrap - just triggered explicitly instead of by width.
       final heightWithNewRow = usedHeight + runSpacing + rowHeight;
-      if (heightWithNewRow <= containerHeight) {
+      if (heightWithNewRow <= usableHeight) {
         usedHeight = heightWithNewRow;
       } else {
         pages.add(page);
@@ -136,7 +147,7 @@ List<List<String>> paginateMeasured({
       lineX = neededX;
     } else {
       final heightWithNewRow = usedHeight + runSpacing + rowHeight;
-      if (heightWithNewRow <= containerHeight) {
+      if (heightWithNewRow <= usableHeight) {
         usedHeight = heightWithNewRow;
       } else {
         pages.add(page);
