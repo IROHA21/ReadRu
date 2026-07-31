@@ -46,17 +46,22 @@
   "translationFailed": "(fallo)",
   "translationUnsupported": "(idioma no compatible)",
   "offlineTranslationWarning": "Sin conexión a internet - las traducciones pueden ser menos precisas.",
+  "offlineTranslationWarningTitle": "Sin conexión a internet",
 
   "readingFolderTitle": "Lectura",
   "readingFolderSubtitle": "Fuente, tamaño, modo nocturno, color de resaltado, cambio de página",
   "languageFolderTitle": "Idioma",
   "languageFolderSubtitle": "Idioma de la app, idioma(s) objetivo, paquetes sin conexión",
+  "settingsRemoveAdsTitle": "Quitar anuncios",
+  "settingsRemoveAdsSubtitle": "Compra única, sin más anuncios",
 
   "textSizeLabel": "Tamaño del texto",
   "letterA": "A",
   "fontLabel": "Fuente",
   "nightModeLabel": "Modo nocturno",
-  "darkThemeLabel": "Tema oscuro",
+  "themeModeSystem": "Sistema",
+  "themeModeLight": "Claro",
+  "themeModeDark": "Oscuro",
   "tapHighlightLabel": "Resaltado al tocar para traducir",
   "highlightTappedWordsLabel": "Resaltar palabras tocadas",
   "translationTextLabel": "Texto de traducción",
@@ -87,8 +92,8 @@
   "bookLanguageStepTitle": "¿En qué idiomas están tus libros?",
   "bookLanguageStepSubtitle": "Elige todos los idiomas en los que lees; puedes cambiarlo por libro más tarde.",
   "downloadStepTitle": "Descargar traducción sin conexión",
+  "downloadMinimumRequired": "{count, plural, one{Descarga al menos 1 idioma para continuar.} other{Descarga al menos {count} idiomas para continuar.}}",
   "downloadStepSubtitle": "Descarga estos paquetes de idioma para que la traducción funcione completamente sin conexión. Puedes omitir esto y hacerlo más tarde en Ajustes.",
-  "skipForNow": "Omitir por ahora",
   "downloadPackScreenTitle": "Descargar paquete de idioma",
 
   "wordBucketTitle": "Cesta de palabras",
@@ -99,5 +104,23 @@
   "bookInfoTitle": "Información del libro",
   "languageNotSet": "No establecido - toca para elegir",
   "languageNotSupported": "{flag} {code} (no compatible con traducción)",
-  "languageOfBookLabel": "Idioma del libro"
+  "languageOfBookLabel": "Idioma del libro",
+
+  "removeAdsScreenTitle": "Quitar anuncios",
+  "removeAdsDescription": "Elimina todos los anuncios de AnyRead con una compra única. Lee sin interrupciones, para siempre.",
+  "removeAdsButtonLabel": "Quitar anuncios",
+  "removeAdsRestoreButtonLabel": "Restaurar compras",
+  "removeAdsRemovedMessage": "Anuncios eliminados. ¡Gracias por tu apoyo!",
+  "removeAdsPurchaseSuccessMessage": "Compra realizada. ¡Anuncios eliminados!",
+  "removeAdsPurchaseCanceledMessage": "Compra cancelada.",
+  "removeAdsPurchaseFailedMessage": "Algo salió mal. Inténtalo de nuevo.",
+  "removeAdsNothingToRestoreMessage": "No se encontró ninguna compra anterior.",
+
+  "removeAdsUpsellTitle": "¿Disfrutando AnyRead?",
+  "removeAdsUpsellContent": "Elimina todos los anuncios de forma permanente por solo {price}.",
+  "removeAdsUpsellContentGeneric": "Elimina todos los anuncios de forma permanente con una compra única.",
+
+  "yandexActiveTooltip": "Traducido vía Yandex (nube)",
+  "yandexInactiveTooltip": "Traducido en el dispositivo",
+  "yandexOfflineTooltip": "Sin conexión - traducción en la nube no disponible"
 }

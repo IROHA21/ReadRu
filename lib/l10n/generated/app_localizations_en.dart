@@ -157,6 +157,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'No internet connection - translations may be less accurate.';
 
   @override
+  String get offlineTranslationWarningTitle => 'No internet connection';
+
+  @override
   String get readingFolderTitle => 'Reading';
 
   @override
@@ -171,6 +174,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'App language, goal language(s), offline packs';
 
   @override
+  String get settingsRemoveAdsTitle => 'Remove Ads';
+
+  @override
+  String get settingsRemoveAdsSubtitle => 'One-time purchase, no more ads';
+
+  @override
   String get textSizeLabel => 'Text size';
 
   @override
@@ -183,7 +192,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nightModeLabel => 'Night mode';
 
   @override
-  String get darkThemeLabel => 'Dark theme';
+  String get themeModeSystem => 'System';
+
+  @override
+  String get themeModeLight => 'Light';
+
+  @override
+  String get themeModeDark => 'Dark';
 
   @override
   String get tapHighlightLabel => 'Tap-to-translate highlight';
@@ -280,7 +295,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Download these language packs so translation works fully offline afterward. You can skip this and do it later in Settings.';
 
   @override
-  String get skipForNow => 'Skip for now';
+  String downloadMinimumRequired(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Download at least $count languages to continue.',
+      one: 'Download at least 1 language to continue.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get downloadPackScreenTitle => 'Download Language Pack';
@@ -311,4 +334,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get languageOfBookLabel => 'Language of the book';
+
+  @override
+  String get removeAdsScreenTitle => 'Remove Ads';
+
+  @override
+  String get removeAdsDescription =>
+      'Remove all ads from AnyRead with a one-time purchase. Read without interruptions, forever.';
+
+  @override
+  String get removeAdsButtonLabel => 'Remove Ads';
+
+  @override
+  String get removeAdsRestoreButtonLabel => 'Restore Purchases';
+
+  @override
+  String get removeAdsRemovedMessage =>
+      'Ads removed. Thank you for your support!';
+
+  @override
+  String get removeAdsPurchaseSuccessMessage =>
+      'Purchase successful. Ads removed!';
+
+  @override
+  String get removeAdsPurchaseCanceledMessage => 'Purchase canceled.';
+
+  @override
+  String get removeAdsPurchaseFailedMessage =>
+      'Something went wrong. Please try again.';
+
+  @override
+  String get removeAdsNothingToRestoreMessage => 'No previous purchase found.';
+
+  @override
+  String get removeAdsUpsellTitle => 'Enjoying AnyRead?';
+
+  @override
+  String removeAdsUpsellContent(Object price) {
+    return 'Remove all ads permanently for just $price.';
+  }
+
+  @override
+  String get removeAdsUpsellContentGeneric =>
+      'Remove all ads permanently with a one-time purchase.';
+
+  @override
+  String get yandexActiveTooltip => 'Translated via Yandex (cloud)';
+
+  @override
+  String get yandexInactiveTooltip => 'Translated on-device';
+
+  @override
+  String get yandexOfflineTooltip => 'Offline - cloud translation unavailable';
 }

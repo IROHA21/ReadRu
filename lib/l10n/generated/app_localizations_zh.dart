@@ -155,6 +155,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get offlineTranslationWarning => '无网络连接——翻译准确度可能会降低。';
 
   @override
+  String get offlineTranslationWarningTitle => '无网络连接';
+
+  @override
   String get readingFolderTitle => '阅读';
 
   @override
@@ -165,6 +168,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get languageFolderSubtitle => '应用语言、目标语言、离线语言包';
+
+  @override
+  String get settingsRemoveAdsTitle => '移除广告';
+
+  @override
+  String get settingsRemoveAdsSubtitle => '一次性购买,从此无广告';
 
   @override
   String get textSizeLabel => '文字大小';
@@ -179,7 +188,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nightModeLabel => '夜间模式';
 
   @override
-  String get darkThemeLabel => '深色主题';
+  String get themeModeSystem => '跟随系统';
+
+  @override
+  String get themeModeLight => '浅色';
+
+  @override
+  String get themeModeDark => '深色';
 
   @override
   String get tapHighlightLabel => '点按翻译高亮';
@@ -272,7 +287,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get downloadStepSubtitle => '下载这些语言包，之后翻译即可完全离线使用。你也可以跳过此步骤，稍后在设置中完成。';
 
   @override
-  String get skipForNow => '暂时跳过';
+  String downloadMinimumRequired(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '请至少下载 $count 种语言以继续。',
+      one: '请至少下载 1 种语言以继续。',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get downloadPackScreenTitle => '下载语言包';
@@ -302,4 +325,51 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get languageOfBookLabel => '书籍语言';
+
+  @override
+  String get removeAdsScreenTitle => '移除广告';
+
+  @override
+  String get removeAdsDescription => '通过一次性购买移除 AnyRead 中的所有广告,从此畅读无干扰。';
+
+  @override
+  String get removeAdsButtonLabel => '移除广告';
+
+  @override
+  String get removeAdsRestoreButtonLabel => '恢复购买';
+
+  @override
+  String get removeAdsRemovedMessage => '广告已移除。感谢您的支持!';
+
+  @override
+  String get removeAdsPurchaseSuccessMessage => '购买成功,广告已移除!';
+
+  @override
+  String get removeAdsPurchaseCanceledMessage => '购买已取消。';
+
+  @override
+  String get removeAdsPurchaseFailedMessage => '出了点问题,请重试。';
+
+  @override
+  String get removeAdsNothingToRestoreMessage => '未找到以前的购买记录。';
+
+  @override
+  String get removeAdsUpsellTitle => '喜欢 AnyRead 吗?';
+
+  @override
+  String removeAdsUpsellContent(Object price) {
+    return '仅需 $price 即可永久移除所有广告。';
+  }
+
+  @override
+  String get removeAdsUpsellContentGeneric => '通过一次性购买永久移除所有广告。';
+
+  @override
+  String get yandexActiveTooltip => '通过 Yandex(云端)翻译';
+
+  @override
+  String get yandexInactiveTooltip => '设备本地翻译';
+
+  @override
+  String get yandexOfflineTooltip => '离线 - 云端翻译不可用';
 }

@@ -46,17 +46,22 @@
   "translationFailed": "(не удалось)",
   "translationUnsupported": "(язык не поддерживается)",
   "offlineTranslationWarning": "Нет подключения к интернету — перевод может быть менее точным.",
+  "offlineTranslationWarningTitle": "Нет подключения к интернету",
 
   "readingFolderTitle": "Чтение",
   "readingFolderSubtitle": "Шрифт, размер, ночной режим, цвет выделения, перелистывание страниц",
   "languageFolderTitle": "Язык",
   "languageFolderSubtitle": "Язык приложения, целевой(ые) язык(и), офлайн-пакеты",
+  "settingsRemoveAdsTitle": "Убрать рекламу",
+  "settingsRemoveAdsSubtitle": "Разовая покупка, больше никакой рекламы",
 
   "textSizeLabel": "Размер текста",
   "letterA": "A",
   "fontLabel": "Шрифт",
   "nightModeLabel": "Ночной режим",
-  "darkThemeLabel": "Тёмная тема",
+  "themeModeSystem": "Системная",
+  "themeModeLight": "Светлая",
+  "themeModeDark": "Тёмная",
   "tapHighlightLabel": "Выделение при переводе по нажатию",
   "highlightTappedWordsLabel": "Выделять нажатые слова",
   "translationTextLabel": "Текст перевода",
@@ -87,8 +92,8 @@
   "bookLanguageStepTitle": "На каких языках ваши книги?",
   "bookLanguageStepSubtitle": "Выберите все языки, на которых вы читаете — позже это можно изменить для каждой книги отдельно.",
   "downloadStepTitle": "Скачать офлайн-перевод",
+  "downloadMinimumRequired": "{count, plural, one{Скачайте хотя бы 1 язык, чтобы продолжить.} other{Скачайте хотя бы {count} языков, чтобы продолжить.}}",
   "downloadStepSubtitle": "Скачайте эти языковые пакеты, чтобы перевод в дальнейшем работал полностью офлайн. Вы можете пропустить это и сделать позже в настройках.",
-  "skipForNow": "Пропустить пока",
   "downloadPackScreenTitle": "Скачать языковой пакет",
 
   "wordBucketTitle": "Корзина слов",
@@ -99,5 +104,23 @@
   "bookInfoTitle": "Информация о книге",
   "languageNotSet": "Не задано — нажмите, чтобы выбрать",
   "languageNotSupported": "{flag} {code} (перевод не поддерживается)",
-  "languageOfBookLabel": "Язык книги"
+  "languageOfBookLabel": "Язык книги",
+
+  "removeAdsScreenTitle": "Убрать рекламу",
+  "removeAdsDescription": "Уберите всю рекламу в AnyRead одной покупкой. Читайте без перерывов - навсегда.",
+  "removeAdsButtonLabel": "Убрать рекламу",
+  "removeAdsRestoreButtonLabel": "Восстановить покупки",
+  "removeAdsRemovedMessage": "Реклама убрана. Спасибо за поддержку!",
+  "removeAdsPurchaseSuccessMessage": "Покупка прошла успешно. Реклама убрана!",
+  "removeAdsPurchaseCanceledMessage": "Покупка отменена.",
+  "removeAdsPurchaseFailedMessage": "Что-то пошло не так. Попробуйте ещё раз.",
+  "removeAdsNothingToRestoreMessage": "Предыдущая покупка не найдена.",
+
+  "removeAdsUpsellTitle": "Нравится AnyRead?",
+  "removeAdsUpsellContent": "Уберите всю рекламу навсегда всего за {price}.",
+  "removeAdsUpsellContentGeneric": "Уберите всю рекламу навсегда одной покупкой.",
+
+  "yandexActiveTooltip": "Переведено через Яндекс (облако)",
+  "yandexInactiveTooltip": "Переведено на устройстве",
+  "yandexOfflineTooltip": "Нет подключения - облачный перевод недоступен"
 }

@@ -46,17 +46,22 @@
   "translationFailed": "(失败)",
   "translationUnsupported": "(不支持该语言)",
   "offlineTranslationWarning": "无网络连接——翻译准确度可能会降低。",
+  "offlineTranslationWarningTitle": "无网络连接",
 
   "readingFolderTitle": "阅读",
   "readingFolderSubtitle": "字体、大小、夜间模式、高亮颜色、翻页方式",
   "languageFolderTitle": "语言",
   "languageFolderSubtitle": "应用语言、目标语言、离线语言包",
+  "settingsRemoveAdsTitle": "移除广告",
+  "settingsRemoveAdsSubtitle": "一次性购买,从此无广告",
 
   "textSizeLabel": "文字大小",
   "letterA": "A",
   "fontLabel": "字体",
   "nightModeLabel": "夜间模式",
-  "darkThemeLabel": "深色主题",
+  "themeModeSystem": "跟随系统",
+  "themeModeLight": "浅色",
+  "themeModeDark": "深色",
   "tapHighlightLabel": "点按翻译高亮",
   "highlightTappedWordsLabel": "高亮已点按的单词",
   "translationTextLabel": "翻译文字",
@@ -87,8 +92,8 @@
   "bookLanguageStepTitle": "你的书籍是什么语言？",
   "bookLanguageStepSubtitle": "选择你阅读的所有语言——之后可为每本书单独更改。",
   "downloadStepTitle": "下载离线翻译",
+  "downloadMinimumRequired": "{count, plural, one{请至少下载 1 种语言以继续。} other{请至少下载 {count} 种语言以继续。}}",
   "downloadStepSubtitle": "下载这些语言包，之后翻译即可完全离线使用。你也可以跳过此步骤，稍后在设置中完成。",
-  "skipForNow": "暂时跳过",
   "downloadPackScreenTitle": "下载语言包",
 
   "wordBucketTitle": "生词本",
@@ -99,5 +104,23 @@
   "bookInfoTitle": "书籍信息",
   "languageNotSet": "未设置——点按选择",
   "languageNotSupported": "{flag} {code}（不支持翻译）",
-  "languageOfBookLabel": "书籍语言"
+  "languageOfBookLabel": "书籍语言",
+
+  "removeAdsScreenTitle": "移除广告",
+  "removeAdsDescription": "通过一次性购买移除 AnyRead 中的所有广告,从此畅读无干扰。",
+  "removeAdsButtonLabel": "移除广告",
+  "removeAdsRestoreButtonLabel": "恢复购买",
+  "removeAdsRemovedMessage": "广告已移除。感谢您的支持!",
+  "removeAdsPurchaseSuccessMessage": "购买成功,广告已移除!",
+  "removeAdsPurchaseCanceledMessage": "购买已取消。",
+  "removeAdsPurchaseFailedMessage": "出了点问题,请重试。",
+  "removeAdsNothingToRestoreMessage": "未找到以前的购买记录。",
+
+  "removeAdsUpsellTitle": "喜欢 AnyRead 吗?",
+  "removeAdsUpsellContent": "仅需 {price} 即可永久移除所有广告。",
+  "removeAdsUpsellContentGeneric": "通过一次性购买永久移除所有广告。",
+
+  "yandexActiveTooltip": "通过 Yandex(云端)翻译",
+  "yandexInactiveTooltip": "设备本地翻译",
+  "yandexOfflineTooltip": "离线 - 云端翻译不可用"
 }

@@ -160,6 +160,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Нет подключения к интернету — перевод может быть менее точным.';
 
   @override
+  String get offlineTranslationWarningTitle => 'Нет подключения к интернету';
+
+  @override
   String get readingFolderTitle => 'Чтение';
 
   @override
@@ -174,6 +177,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Язык приложения, целевой(ые) язык(и), офлайн-пакеты';
 
   @override
+  String get settingsRemoveAdsTitle => 'Убрать рекламу';
+
+  @override
+  String get settingsRemoveAdsSubtitle =>
+      'Разовая покупка, больше никакой рекламы';
+
+  @override
   String get textSizeLabel => 'Размер текста';
 
   @override
@@ -186,7 +196,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get nightModeLabel => 'Ночной режим';
 
   @override
-  String get darkThemeLabel => 'Тёмная тема';
+  String get themeModeSystem => 'Системная';
+
+  @override
+  String get themeModeLight => 'Светлая';
+
+  @override
+  String get themeModeDark => 'Тёмная';
 
   @override
   String get tapHighlightLabel => 'Выделение при переводе по нажатию';
@@ -284,7 +300,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'Скачайте эти языковые пакеты, чтобы перевод в дальнейшем работал полностью офлайн. Вы можете пропустить это и сделать позже в настройках.';
 
   @override
-  String get skipForNow => 'Пропустить пока';
+  String downloadMinimumRequired(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Скачайте хотя бы $count языков, чтобы продолжить.',
+      one: 'Скачайте хотя бы 1 язык, чтобы продолжить.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get downloadPackScreenTitle => 'Скачать языковой пакет';
@@ -315,4 +339,57 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get languageOfBookLabel => 'Язык книги';
+
+  @override
+  String get removeAdsScreenTitle => 'Убрать рекламу';
+
+  @override
+  String get removeAdsDescription =>
+      'Уберите всю рекламу в AnyRead одной покупкой. Читайте без перерывов - навсегда.';
+
+  @override
+  String get removeAdsButtonLabel => 'Убрать рекламу';
+
+  @override
+  String get removeAdsRestoreButtonLabel => 'Восстановить покупки';
+
+  @override
+  String get removeAdsRemovedMessage => 'Реклама убрана. Спасибо за поддержку!';
+
+  @override
+  String get removeAdsPurchaseSuccessMessage =>
+      'Покупка прошла успешно. Реклама убрана!';
+
+  @override
+  String get removeAdsPurchaseCanceledMessage => 'Покупка отменена.';
+
+  @override
+  String get removeAdsPurchaseFailedMessage =>
+      'Что-то пошло не так. Попробуйте ещё раз.';
+
+  @override
+  String get removeAdsNothingToRestoreMessage =>
+      'Предыдущая покупка не найдена.';
+
+  @override
+  String get removeAdsUpsellTitle => 'Нравится AnyRead?';
+
+  @override
+  String removeAdsUpsellContent(Object price) {
+    return 'Уберите всю рекламу навсегда всего за $price.';
+  }
+
+  @override
+  String get removeAdsUpsellContentGeneric =>
+      'Уберите всю рекламу навсегда одной покупкой.';
+
+  @override
+  String get yandexActiveTooltip => 'Переведено через Яндекс (облако)';
+
+  @override
+  String get yandexInactiveTooltip => 'Переведено на устройстве';
+
+  @override
+  String get yandexOfflineTooltip =>
+      'Нет подключения - облачный перевод недоступен';
 }

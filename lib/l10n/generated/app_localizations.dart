@@ -368,6 +368,12 @@ abstract class AppLocalizations {
   /// **'No internet connection - translations may be less accurate.'**
   String get offlineTranslationWarning;
 
+  /// No description provided for @offlineTranslationWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get offlineTranslationWarningTitle;
+
   /// No description provided for @readingFolderTitle.
   ///
   /// In en, this message translates to:
@@ -391,6 +397,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'App language, goal language(s), offline packs'**
   String get languageFolderSubtitle;
+
+  /// No description provided for @settingsRemoveAdsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Ads'**
+  String get settingsRemoveAdsTitle;
+
+  /// No description provided for @settingsRemoveAdsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time purchase, no more ads'**
+  String get settingsRemoveAdsSubtitle;
 
   /// No description provided for @textSizeLabel.
   ///
@@ -416,11 +434,23 @@ abstract class AppLocalizations {
   /// **'Night mode'**
   String get nightModeLabel;
 
-  /// No description provided for @darkThemeLabel.
+  /// No description provided for @themeModeSystem.
   ///
   /// In en, this message translates to:
-  /// **'Dark theme'**
-  String get darkThemeLabel;
+  /// **'System'**
+  String get themeModeSystem;
+
+  /// No description provided for @themeModeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get themeModeLight;
+
+  /// No description provided for @themeModeDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get themeModeDark;
 
   /// No description provided for @tapHighlightLabel.
   ///
@@ -590,11 +620,11 @@ abstract class AppLocalizations {
   /// **'Download these language packs so translation works fully offline afterward. You can skip this and do it later in Settings.'**
   String get downloadStepSubtitle;
 
-  /// No description provided for @skipForNow.
+  /// No description provided for @downloadMinimumRequired.
   ///
   /// In en, this message translates to:
-  /// **'Skip for now'**
-  String get skipForNow;
+  /// **'{count, plural, one{Download at least 1 language to continue.} other{Download at least {count} languages to continue.}}'**
+  String downloadMinimumRequired(num count);
 
   /// No description provided for @downloadPackScreenTitle.
   ///
@@ -649,6 +679,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Language of the book'**
   String get languageOfBookLabel;
+
+  /// No description provided for @removeAdsScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Ads'**
+  String get removeAdsScreenTitle;
+
+  /// No description provided for @removeAdsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all ads from AnyRead with a one-time purchase. Read without interruptions, forever.'**
+  String get removeAdsDescription;
+
+  /// No description provided for @removeAdsButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Ads'**
+  String get removeAdsButtonLabel;
+
+  /// No description provided for @removeAdsRestoreButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Purchases'**
+  String get removeAdsRestoreButtonLabel;
+
+  /// No description provided for @removeAdsRemovedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Ads removed. Thank you for your support!'**
+  String get removeAdsRemovedMessage;
+
+  /// No description provided for @removeAdsPurchaseSuccessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase successful. Ads removed!'**
+  String get removeAdsPurchaseSuccessMessage;
+
+  /// No description provided for @removeAdsPurchaseCanceledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase canceled.'**
+  String get removeAdsPurchaseCanceledMessage;
+
+  /// No description provided for @removeAdsPurchaseFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get removeAdsPurchaseFailedMessage;
+
+  /// No description provided for @removeAdsNothingToRestoreMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No previous purchase found.'**
+  String get removeAdsNothingToRestoreMessage;
+
+  /// No description provided for @removeAdsUpsellTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoying AnyRead?'**
+  String get removeAdsUpsellTitle;
+
+  /// No description provided for @removeAdsUpsellContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all ads permanently for just {price}.'**
+  String removeAdsUpsellContent(Object price);
+
+  /// No description provided for @removeAdsUpsellContentGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all ads permanently with a one-time purchase.'**
+  String get removeAdsUpsellContentGeneric;
+
+  /// No description provided for @yandexActiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated via Yandex (cloud)'**
+  String get yandexActiveTooltip;
+
+  /// No description provided for @yandexInactiveTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Translated on-device'**
+  String get yandexInactiveTooltip;
+
+  /// No description provided for @yandexOfflineTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline - cloud translation unavailable'**
+  String get yandexOfflineTooltip;
 }
 
 class _AppLocalizationsDelegate

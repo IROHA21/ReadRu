@@ -46,17 +46,22 @@
   "translationFailed": "(فشلت الترجمة)",
   "translationUnsupported": "(اللغة غير مدعومة)",
    "offlineTranslationWarning": "لا يوجد اتصال بالإنترنت - قد تكون الترجمات أقل دقة.",
+  "offlineTranslationWarningTitle": "لا يوجد اتصال بالإنترنت",
 
   "readingFolderTitle": "القراءة",
   "readingFolderSubtitle": "الخط، الحجم، الوضع الليلي، لون التمييز، اتجاه تقليب الصفحات",
   "languageFolderTitle": "اللغة",
   "languageFolderSubtitle": "لغة التطبيق، لغة (لغات) الهدف، الحزم غير المتصلة",
+  "settingsRemoveAdsTitle": "إزالة الإعلانات",
+  "settingsRemoveAdsSubtitle": "شراء لمرة واحدة، دون مزيد من الإعلانات",
 
   "textSizeLabel": "حجم النص",
   "letterA": "A",
   "fontLabel": "الخط",
   "nightModeLabel": "الوضع الليلي",
-  "darkThemeLabel": "المظهر الداكن",
+  "themeModeSystem": "النظام",
+  "themeModeLight": "فاتح",
+  "themeModeDark": "داكن",
   "tapHighlightLabel": "تمييز النقر للترجمة",
   "highlightTappedWordsLabel": "تمييز الكلمات التي تم النقر عليها",
   "translationTextLabel": "نص الترجمة",
@@ -87,8 +92,8 @@
   "bookLanguageStepTitle": "بأي لغات كتبك؟",
   "bookLanguageStepSubtitle": "اختر كل لغة تقرأ بها - يمكنك تغيير ذلك لكل كتاب لاحقًا.",
   "downloadStepTitle": "تنزيل الترجمة غير المتصلة",
+  "downloadMinimumRequired": "{count, plural, one{نزّل لغة واحدة على الأقل للمتابعة.} other{نزّل {count} لغات على الأقل للمتابعة.}}",
   "downloadStepSubtitle": "نزّل حزم اللغات هذه حتى تعمل الترجمة دون اتصال بالكامل لاحقًا. يمكنك تخطي هذه الخطوة والقيام بها لاحقًا من الإعدادات.",
-  "skipForNow": "تخطي الآن",
   "downloadPackScreenTitle": "تنزيل حزمة اللغة",
 
   "wordBucketTitle": "سلة الكلمات",
@@ -99,5 +104,23 @@
   "bookInfoTitle": "معلومات الكتاب",
   "languageNotSet": "غير محدد - انقر للاختيار",
   "languageNotSupported": "{flag} {code} (الترجمة غير مدعومة)",
-  "languageOfBookLabel": "لغة الكتاب"
+  "languageOfBookLabel": "لغة الكتاب",
+
+  "removeAdsScreenTitle": "إزالة الإعلانات",
+  "removeAdsDescription": "أزل جميع الإعلانات من AnyRead بشراء لمرة واحدة. اقرأ دون انقطاع، إلى الأبد.",
+  "removeAdsButtonLabel": "إزالة الإعلانات",
+  "removeAdsRestoreButtonLabel": "استعادة المشتريات",
+  "removeAdsRemovedMessage": "تمت إزالة الإعلانات. شكرًا لدعمك!",
+  "removeAdsPurchaseSuccessMessage": "تم الشراء بنجاح. تمت إزالة الإعلانات!",
+  "removeAdsPurchaseCanceledMessage": "تم إلغاء الشراء.",
+  "removeAdsPurchaseFailedMessage": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+  "removeAdsNothingToRestoreMessage": "لم يتم العثور على عملية شراء سابقة.",
+
+  "removeAdsUpsellTitle": "هل يعجبك AnyRead؟",
+  "removeAdsUpsellContent": "أزل جميع الإعلانات نهائيًا مقابل {price} فقط.",
+  "removeAdsUpsellContentGeneric": "أزل جميع الإعلانات نهائيًا بشراء لمرة واحدة.",
+
+  "yandexActiveTooltip": "تُرجمت عبر Yandex (سحابيًا)",
+  "yandexInactiveTooltip": "تُرجمت على الجهاز",
+  "yandexOfflineTooltip": "غير متصل - الترجمة السحابية غير متاحة"
 }
