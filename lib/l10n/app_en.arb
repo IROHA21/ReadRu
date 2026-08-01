@@ -1,0 +1,162 @@
+{
+  "@@locale": "en",
+
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "back": "Back",
+  "continueButton": "Continue",
+  "download": "Download",
+  "downloading": "Downloading...",
+  "close": "Close",
+  "title": "Title",
+  "searchLanguages": "Search languages",
+  "showMoreLanguages": "Show more",
+  "chapters": "Chapters",
+  "format": "Format",
+  "fileSize": "File size",
+  "progress": "Progress",
+  "description": "Description",
+  "author": "Author",
+  "later": "Later",
+
+  "libraryTitle": "Library",
+  "wordBucketTooltip": "Word Bucket",
+  "settingsTitle": "Settings",
+  "libraryEmptyState": "Add your first document to begin reading.",
+  "downloadLanguagePackTitle": "Download language pack?",
+  "downloadLanguagePackContent": "\"{title}\" is in {language}. Download the offline translation pack now so tap-to-translate works without internet?",
+  "@downloadLanguagePackContent": {
+    "placeholders": { "title": {}, "language": {} }
+  },
+  "infoMenuItem": "Info",
+  "renameMenuItem": "Rename",
+  "renameBookTitle": "Rename book",
+  "deleteDocumentTitle": "Delete document?",
+  "deleteDocumentContent": "\"{title}\" will be removed from your library.",
+  "@deleteDocumentContent": {
+    "placeholders": { "title": {} }
+  },
+  "bookAlreadyExists": "A book named \"{title}\" already exists",
+  "@bookAlreadyExists": {
+    "placeholders": { "title": {} }
+  },
+
+  "chaptersTooltip": "Chapters",
+  "readingSettingsTooltip": "Reading settings",
+  "pageCounterUnknown": "- / -",
+  "pageCounter": "{current} / {total}",
+  "@pageCounter": {
+    "placeholders": { "current": {}, "total": {} }
+  },
+  "chapterPageLabel": "p. {page}",
+  "@chapterPageLabel": {
+    "placeholders": { "page": {} }
+  },
+  "cancelSelectionTooltip": "Cancel selection",
+  "wordsSelected": "{count, plural, one{1 word selected} other{{count} words selected}}",
+  "@wordsSelected": {
+    "placeholders": { "count": {} }
+  },
+  "translateButton": "Translate",
+  "saved": "Saved",
+  "saveToWordBucket": "Save to Word Bucket",
+  "translationFailed": "(failed)",
+  "translationUnsupported": "(language not supported)",
+  "offlineTranslationWarning": "No internet connection - translations may be less accurate.",
+  "offlineTranslationWarningTitle": "No internet connection",
+
+  "readingFolderTitle": "Reading",
+  "readingFolderSubtitle": "Font, size, night mode, highlight color, page turns",
+  "languageFolderTitle": "Language",
+  "languageFolderSubtitle": "App language, goal language(s), offline packs",
+  "settingsRemoveAdsTitle": "Remove Ads",
+  "settingsRemoveAdsSubtitle": "One-time purchase, no more ads",
+
+  "textSizeLabel": "Text size",
+  "letterA": "A",
+  "fontLabel": "Font",
+  "nightModeLabel": "Night mode",
+  "themeModeSystem": "System",
+  "themeModeLight": "Light",
+  "themeModeDark": "Dark",
+  "tapHighlightLabel": "Tap-to-translate highlight",
+  "highlightTappedWordsLabel": "Highlight tapped words",
+  "translationTextLabel": "Translation text",
+  "sizeLabel": "Size",
+  "pageTurnDirectionLabel": "Page turn direction",
+  "leftToRight": "Left to right",
+  "rightToLeft": "Right to left",
+
+  "appLanguageLabel": "App language",
+  "appLanguageDescription": "Translations go into this language.",
+  "goalLanguageLabel": "Goal language(s)",
+  "goalLanguageDescription": "The language(s) your books are in.",
+  "addLanguageChip": "Add language",
+  "offlinePacksLabel": "Offline language packs",
+  "offlinePacksDescription": "Starred languages are your current app/goal languages. Download or delete any pack.",
+  "addLanguageSheetTitle": "Add a language",
+
+  "packsReadySummary": "{ready} of {total} ready · ~{mb} MB total (estimated)",
+  "@packsReadySummary": {
+    "placeholders": { "ready": {}, "total": {}, "mb": {} }
+  },
+  "checkingStatus": "Checking...",
+  "downloadingStatus": "Downloading... {seconds}s",
+  "@downloadingStatus": {
+    "placeholders": { "seconds": {} }
+  },
+  "downloadedStatus": "Downloaded",
+  "downloadFailedStatus": "Download failed - tap to retry",
+  "notDownloadedStatus": "~{mb} MB · not downloaded",
+  "@notDownloadedStatus": {
+    "placeholders": { "mb": {} }
+  },
+  "deletePackTooltip": "Delete downloaded pack",
+
+  "spokenLanguageStepTitle": "What language do you speak?",
+  "spokenLanguageStepSubtitle": "We'll translate books into this language.",
+  "bookLanguageStepTitle": "What languages are your books in?",
+  "bookLanguageStepSubtitle": "Pick every language you read in - you can change this per book later.",
+  "downloadStepTitle": "Download offline translation",
+  "downloadStepSubtitle": "Download these language packs so translation works fully offline afterward. You can skip this and do it later in Settings.",
+  "downloadMinimumRequired": "{count, plural, one{Download at least 1 language to continue.} other{Download at least {count} languages to continue.}}",
+  "@downloadMinimumRequired": {
+    "placeholders": { "count": {} }
+  },
+  "downloadPackScreenTitle": "Download Language Pack",
+
+  "wordBucketTitle": "Word Bucket",
+  "showAllWords": "Show all words",
+  "groupByBook": "Group by book",
+  "wordBucketEmptyState": "Tap words while reading to save their translations here.",
+
+  "bookInfoTitle": "Book Info",
+  "languageNotSet": "Not set - tap to choose",
+  "languageNotSupported": "{flag} {code} (not supported for translation)",
+  "@languageNotSupported": {
+    "placeholders": { "flag": {}, "code": {} }
+  },
+  "languageOfBookLabel": "Language of the book",
+
+  "removeAdsScreenTitle": "Remove Ads",
+  "removeAdsDescription": "Remove all ads from AnyRead with a one-time purchase. Read without interruptions, forever.",
+  "removeAdsButtonLabel": "Remove Ads",
+  "removeAdsRestoreButtonLabel": "Restore Purchases",
+  "removeAdsRemovedMessage": "Ads removed. Thank you for your support!",
+  "removeAdsPurchaseSuccessMessage": "Purchase successful. Ads removed!",
+  "removeAdsPurchaseCanceledMessage": "Purchase canceled.",
+  "removeAdsPurchaseFailedMessage": "Something went wrong. Please try again.",
+  "removeAdsNothingToRestoreMessage": "No previous purchase found.",
+
+  "removeAdsUpsellTitle": "Enjoying AnyRead?",
+  "removeAdsUpsellContent": "Remove all ads permanently for just {price}.",
+  "@removeAdsUpsellContent": {
+    "placeholders": { "price": {} }
+  },
+  "removeAdsUpsellContentGeneric": "Remove all ads permanently with a one-time purchase.",
+
+  "yandexActiveTooltip": "Translated via Yandex (cloud)",
+  "yandexInactiveTooltip": "Translated on-device",
+  "yandexOfflineTooltip": "Offline - cloud translation unavailable"
+}

@@ -1,6 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="read_ru"
+        android:label="AnyRead"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -30,6 +32,30 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Google's public TEST AdMob app ID - required for the AdMob SDK
+             to initialize at all. Swap for the real AdMob app ID before
+             release; using a real ID during development risks account
+             flags for invalid traffic. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-3940256099942544~3347511713"/>
+        <!-- google_mobile_ads pulls in WorkManager, which auto-inits its
+             Room database via this provider before any Dart code runs. On
+             some devices (confirmed: MIUI on a Mi 9, Android 10) that Room
+             init throws and crashes the whole app on launch, before Flutter
+             even starts. Disabling WorkManager's auto-init here is Google's
+             own documented fix (on-demand WorkManager initialization) - ads
+             don't depend on it working. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

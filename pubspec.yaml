@@ -1,5 +1,5 @@
 name: read_ru
-description: "app to read russian books for language learners"
+description: "AnyRead - read books in any supported language with tap-to-translate"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -10,13 +10,13 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # Both the version and the builder number may be overridden in flutter
 # build by specifying --build-name and --build-number, respectively.
 # In Android, build-name is used as versionName while build-number used as versionCode.
-# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# Read more about Android versioning at https://developer.android.com/studio/publish/versionin
 # In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.8+12
 
 environment:
   sdk: ^3.12.2
@@ -34,11 +34,25 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  file_picker: ^11.0.2
+  file_picker: 10.3.10
   syncfusion_flutter_pdf: ^33.2.13
   epubx: 4.0.0
   dart_mobi: ^1.0.0
-  fb2_parse: ^1.0.1
+  get_it: ^9.2.1
+  flutter_bloc: ^9.1.1
+  kindle_unpack: ^0.1.1
+  shared_preferences: ^2.5.5
+  http: ^1.6.0
+  google_fonts: ^8.2.0
+  image: ^3.3.0
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  google_mlkit_translation: ^0.14.0
+  google_mobile_ads: ^9.0.0
+  yandex_mobileads: ^8.2.0
+  connectivity_plus: ^7.3.1
+  in_app_purchase: ^3.3.0
 
 
 
@@ -52,12 +66,20 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.11.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
